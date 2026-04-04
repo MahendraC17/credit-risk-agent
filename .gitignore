@@ -18,3 +18,5 @@ data/raw/
 Thumbs.db
 
 *.log
+app/data_processing/__init__.py
+app/db/__init__.py

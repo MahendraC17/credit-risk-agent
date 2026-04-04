@@ -3,7 +3,7 @@ from app.db.connection import engine
 
 
 def fetch_applicant(applicant_id: int):
-    query = text("""SELECT * FROM borrowersWHERE borrower_id = :id""")
+    query = text("""SELECT * FROM borrowers WHERE borrower_id = :id""")
 
     with engine.connect() as conn:
         result = conn.execute(query, {"id": applicant_id})
@@ -13,7 +13,7 @@ def fetch_applicant(applicant_id: int):
 
 
 def fetch_multiple_applicants(limit: int = 5):
-    query = text(f"""SELECT * FROM borrowersLIMIT :limit""")
+    query = text(f"""SELECT * FROM borrowers LIMIT :limit""")
 
     with engine.connect() as conn:
         result = conn.execute(query, {"limit": limit})
