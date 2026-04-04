@@ -44,7 +44,8 @@ def evaluate_applicant(applicant_data: dict) -> dict:
                 unique.append(d)
                 seen.add(d["feature"])
 
-        return unique[:top_n]
+        if len(unique) < 2:
+            return drivers[:3]
 
     risk_score = predict_risk(applicant_data)
 

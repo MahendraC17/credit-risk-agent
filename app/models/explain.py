@@ -82,7 +82,8 @@ def explain_prediction(applicant_data: dict, top_n: int = 5):
         cleaned_output.append({
             "feature": feature_name,
             "impact": round(float(impact), 4),
-            "effect": effect
+            "effect": effect,
+            "value": applicant_data.get(base_feature)
         })
 
     return cleaned_output
