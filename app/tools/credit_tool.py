@@ -13,6 +13,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
 
     def filter_key_drivers(drivers: list, top_n: int = 3):
+
         IMPORTANT_FEATURES = {
             "debt_to_income",
             "loan_amount",
@@ -21,36 +22,57 @@ def evaluate_applicant(applicant_data: dict) -> dict:
             "historical_default"
         }
 
-        filtered = []
+        def normalize_feature_name(feature: str):
+            if " = " in feature:
+                base, value = feature.split(" = ", 1)
+                return base.strip(), value.strip()
+            return feature.strip(), None
+
+        priority = []
+        secondary = []
 
         for d in drivers:
             base_feature, value = normalize_feature_name(d["feature"])
+            base_feature = base_feature.lower()
+            
+            item = {
+                "feature": base_feature if not value else f"{base_feature} = {value}",
+                "value": (value if value is not None 
+                                else applicant_data.get(base_feature, "N/A")),
+                "impact": d["impact"],
+                "effect": d["effect"]
+            }
 
             if base_feature in IMPORTANT_FEATURES:
-                filtered.append({
-                    "feature": base_feature,
-                    "value": value,  # keep semantic info
-                    "impact": d["impact"],
-                    "effect": d["effect"]
-                })
+                priority.append(item)
+            else:
+                secondary.append(item)
 
-        filtered = sorted(filtered, key=lambda x: abs(x["impact"]), reverse=True)
+        # Combine → priority first
+        combined = priority + secondary
 
+        # Sort by absolute impact
+        combined = sorted(combined, key=lambda x: abs(x["impact"]), reverse=True)
+
+        # Deduplicate
         seen = set()
         unique = []
 
-        for d in filtered:
+        for d in combined:
             if d["feature"] not in seen:
                 unique.append(d)
                 seen.add(d["feature"])
 
-        if len(unique) < 2:
-            return drivers[:3]
+        # 🔥 CRITICAL: fallback safety
+        if len(unique) == 0:
+            return drivers[:top_n]
+
+        return unique[:top_n]
 
     risk_score = predict_risk(applicant_data)
 
     drivers = explain_prediction(applicant_data)
-    key_drivers = filter_key_drivers(drivers)
+    key_drivers = filter_key_drivers(drivers) or []
 
     context = build_context(applicant_data, risk_score, "TEMP", key_drivers)
 
