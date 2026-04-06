@@ -2,15 +2,9 @@ from app.models.predict import predict_risk
 from app.models.explain import explain_prediction
 from app.decision.context import build_context
 from app.decision.signals import extract_signals, aggregate_signals, make_decision, classify_risk_band
+from app.models.similarity import find_similar
 
 def evaluate_applicant(applicant_data: dict) -> dict:
-
-    def normalize_feature_name(feature: str):
-        if " = " in feature:
-            base, value = feature.split(" = ", 1)
-            return base.strip(), value.strip()
-        return feature.strip(), None
-
 
     def filter_key_drivers(drivers: list, top_n: int = 3):
 
@@ -48,13 +42,10 @@ def evaluate_applicant(applicant_data: dict) -> dict:
             else:
                 secondary.append(item)
 
-        # Combine → priority first
         combined = priority + secondary
 
-        # Sort by absolute impact
         combined = sorted(combined, key=lambda x: abs(x["impact"]), reverse=True)
 
-        # Deduplicate
         seen = set()
         unique = []
 
@@ -63,14 +54,13 @@ def evaluate_applicant(applicant_data: dict) -> dict:
                 unique.append(d)
                 seen.add(d["feature"])
 
-        # 🔥 CRITICAL: fallback safety
         if len(unique) == 0:
             return drivers[:top_n]
 
         return unique[:top_n]
 
     risk_score = predict_risk(applicant_data)
-
+    similarity = find_similar(applicant_data)
     drivers = explain_prediction(applicant_data)
     key_drivers = filter_key_drivers(drivers) or []
 
@@ -89,6 +79,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     return {
         "risk_score": round(risk_score, 4),
+        "similarity": similarity,
         "risk_level": risk_level,
         "decision": decision,
         "decision_reason": reason,
@@ -107,9 +98,9 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 if __name__ == "__main__":
     from app.db.queries import fetch_applicant
 
-    applicant = fetch_applicant(3)
+    # applicant = fetch_applicant(3)
 
-    result = evaluate_applicant(applicant)
+    # result = evaluate_applicant(applicant)
 
     for i in range(1, 60):
         applicant = fetch_applicant(i)
@@ -117,7 +108,8 @@ if __name__ == "__main__":
 
         print(f"\nApplicant {i}:")
         print("Risk Level:", result["risk_level"])
-        print("Decision:", result["decision"])
-        print("Risk Breakdown:", result["risk_breakdown"])
-        print("Signals:", result["signals"])
-        print("Debug:", result["debug"])
+        print("Simmilarity:", result["similarity"])
+        # print("Decision:", result["decision"])
+        # print("Risk Breakdown:", result["risk_breakdown"])
+        # print("Signals:", result["signals"])
+        # print("Debug:", result["debug"])

@@ -22,5 +22,6 @@ def evaluate_borrower(borrower_id: int):
         "decision": result["decision"],
         "decision_reason": result["decision_reason"],
         "key_drivers": result["key_drivers"],
-        "signals": result["signals"]
+        "signals": result["signals"],
+        "similarity": result["similarity"]
     }
