@@ -14,7 +14,8 @@ def build_context(applicant, risk_score, risk_level, drivers):
         "dti": dti,
 
         "is_high_dti": dti > 0.5,
-        "is_moderate_dti": dti > 0.4,
+        "is_moderate_dti": 0.4 < dti <= 0.5,
+        "is_low_dti": dti < 0.25,
 
         "historical_default": applicant.get("historical_default", "N"),
         "credit_history_length": applicant.get("credit_history_length", 0),

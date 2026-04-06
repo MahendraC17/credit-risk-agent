@@ -47,6 +47,15 @@ def extract_signals(context: dict) -> list:
         "direction": "negative"
     })
 
+    # POSITIVE FINANCIAL SIGNAL
+    if context.get("is_low_dti"):
+        signals.append({
+            "name": "low_dti",
+            "type": "financial",
+            "strength": 0.08,
+            "direction": "positive"
+        })
+
     # FINANCIAL SIGNALS
     if context["is_high_dti"]:
         signals.append({
@@ -72,7 +81,7 @@ def extract_signals(context: dict) -> list:
             "strength": SIGNAL_CONFIG["historical_default"]["weight"],
             "direction": "negative"
         })
-
+    
     return signals
 
 
