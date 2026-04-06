@@ -68,12 +68,11 @@ def explain_prediction(applicant_data: dict, top_n: int = 5):
 
         base_feature, category = clean_feature_name(raw_feature)
 
-        effect = (
-            "increased model risk score"
-            if impact > 0
-            else "decreased model risk score"
-        )
-        
+        if impact > 0:
+            effect = "increases likelihood of default"
+        else:
+            effect = "reduces likelihood of default"
+
         if category:
             feature_name = f"{base_feature} = {category}"
         else:
