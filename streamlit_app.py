@@ -1,91 +1,68 @@
 import streamlit as st
 import requests
 
-API_URL = "http://127.0.0.1:8000"
+st.title("Credit Risk Underwriting System")
 
-st.set_page_config(page_title="Credit Risk Underwriting", layout="wide")
+borrower_id = st.number_input("Enter Borrower ID", min_value=1, step=1)
 
-st.title("Credit Risk Decision System")
+if st.button("Evaluate"):
 
-st.sidebar.header("Input")
-
-borrower_id = st.sidebar.number_input(
-    "Borrower ID",
-    min_value=1,
-    step=1
-)
-
-analyze = st.sidebar.button("Evaluate")
-
-if analyze:
-    with st.spinner("Evaluating borrower..."):
-        response = requests.post(f"{API_URL}/evaluate/{borrower_id}")
+    response = requests.post(f"http://localhost:8000/evaluate/{borrower_id}")
 
     if response.status_code != 200:
-        st.error("Error fetching data")
+        st.error("Applicant not found")
     else:
         data = response.json()
 
-        col1, col2, col3 = st.columns(3)
+        st.header("Decision")
 
-        col1.metric("Risk Score", data["risk_score"])
-        col2.metric("Risk Level", data["risk_level"])
-        col3.metric("Decision", data["decision"])
-
-        st.divider()
-
-        st.subheader("Decision Rationale")
+        st.subheader(f"{data['decision']}")
         st.write(data["decision_reason"])
 
-        st.divider()
 
-        st.subheader("Key Risk Drivers")
+        st.header("Risk Overview")
 
-        for driver in data["key_drivers"]:
-            feature = driver["feature"]
-            value = driver["value"]
-            impact = driver["impact"]
+        st.metric("Risk Score", round(data["risk_score"], 4))
+        st.write("Risk Level:", data["risk_level"])
 
-            direction = "↑" if impact > 0 else "↓"
+        rb = data["risk_breakdown"]
 
-            st.write(
-                f"**{feature}** = {value} {direction} "
-                f"(impact: {round(impact, 2)})"
-            )
+        st.write("Base Risk:", rb["base_risk"])
+        st.write("Adjustment:", rb["adjustment"])
+        st.write("Final Risk:", rb["final_risk"])
 
-        st.divider()
 
-        st.subheader("Risk Signals")
+        st.header("Signals")
 
-        for signal in data["signals"]:
-            st.write(
-                f"{signal['name']} → strength: {round(signal['strength'], 3)}"
-            )
+        for s in data["signals"]:
+            st.write(f"{s['name']} | {s['direction']} | strength: {s['strength']}")
 
-        st.divider()
-        st.subheader("Peer Comparison (Similarity)")
 
-        similarity = data.get("similarity", {})
+        st.header("Key Drivers")
 
-        default_rate = similarity.get("similar_default_rate", None)
-        neighbors = similarity.get("neighbor_count", None)
+        for d in data["key_drivers"]:
+            st.write(f"{d['feature']} → {d['effect']} (impact: {d['impact']})")
 
-        if default_rate is not None:
-            col1, col2 = st.columns(2)
 
-            col1.metric(
-                "Similar Borrower Default Rate",
-                f"{round(default_rate * 100, 1)}%"
-            )
+        st.header("Similarity")
 
-            col2.metric(
-                "Neighbors Analyzed",
-                neighbors
-            )
+        st.write("Default Rate (Neighbors):", data["similarity"]["similar_default_rate"])
+        st.write("Neighbors Used:", data["similarity"]["neighbor_count"])
 
-            if default_rate > 0.5:
-                st.warning("Similar borrowers show elevated default behavior")
-            elif default_rate > 0.3:
-                st.info("Similar borrowers show moderate default behavior")
-            else:
-                st.success("Similar borrowers show low default behavior")
+
+        st.header("Consistency Check")
+
+        cc = data["consistency_check"]
+
+        st.write("Model Risk:", cc["model_risk"])
+        st.write("Neighbor Risk:", cc["neighbor_risk"])
+        st.write("Gap:", cc["gap"])
+        st.write("Flag:", cc["flag"])
+
+
+        st.header("Confidence")
+
+        st.metric("Confidence Score", data["confidence"]["score"])
+        st.write("Level:", data["confidence"]["level"])
+        if data["confidence"]["level"] == "Low":
+            st.warning("Low confidence prediction — review recommended")

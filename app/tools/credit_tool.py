@@ -4,6 +4,28 @@ from app.decision.context import build_context
 from app.decision.signals import extract_signals, aggregate_signals, make_decision, classify_risk_band
 from app.models.similarity import find_similar
 
+def compute_confidence(model_risk, similar_risk, adjustment):
+    
+    gap = abs(model_risk - similar_risk)
+
+    consistency_score = max(0, 1 - gap * 2)  
+
+    adjustment_penalty = min(abs(adjustment), 0.5)
+
+    confidence_score = consistency_score * (1 - adjustment_penalty)
+
+    if confidence_score > 0.7:
+        level = "High"
+    elif confidence_score > 0.4:
+        level = "Medium"
+    else:
+        level = "Low"
+
+    return {
+        "score": round(confidence_score, 4),
+        "level": level
+    }
+
 def evaluate_applicant(applicant_data: dict) -> dict:
 
     def filter_key_drivers(drivers: list, top_n: int = 3):
@@ -87,6 +109,8 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     final_risk = risk_profile["final_risk"]
 
+    confidence = compute_confidence(model_risk, similar_risk, risk_profile["adjustment"])
+
     risk_level = classify_risk_band(final_risk)
 
     context = build_context(applicant_data, final_risk, risk_level, key_drivers)
@@ -103,13 +127,14 @@ def evaluate_applicant(applicant_data: dict) -> dict:
         "risk_breakdown": risk_profile,
         "key_drivers": key_drivers,
         "consistency_check": consistency,
+        "confidence": confidence,
 
-        "debug": {
-            "base_risk": risk_profile["base_risk"],
-            "adjustment": risk_profile["adjustment"],
-            "final_risk": risk_profile["final_risk"],
-            "signals": signals
-                }
+        # "debug": {
+        #     "base_risk": risk_profile["base_risk"],
+        #     "adjustment": risk_profile["adjustment"],
+        #     "final_risk": risk_profile["final_risk"],
+        #     "signals": signals
+        #         }
     }
 
 if __name__ == "__main__":
@@ -130,4 +155,6 @@ if __name__ == "__main__":
         print("Risk Breakdown:", result["risk_breakdown"])
         print("Signals:", result["signals"])
         print("Consistenct check:", result["consistency_check"])
-        print("Debug:", result["debug"])
+        print("Confidence:", result["confidence"])
+
+        # print("Debug:", result["debug"])
