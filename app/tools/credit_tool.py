@@ -60,8 +60,23 @@ def evaluate_applicant(applicant_data: dict) -> dict:
         return unique[:top_n]
 
     risk_score = predict_risk(applicant_data)
+
     similarity = find_similar(applicant_data)
+
+    model_risk = risk_score
+    similar_risk = similarity["similar_default_rate"]
+
+    gap = abs(model_risk - similar_risk)
+
+    consistency = {
+        "model_risk": round(model_risk, 4),
+        "neighbor_risk": round(similar_risk, 4),
+        "gap": round(gap, 4),
+        "flag": gap > 0.25
+    }
+
     drivers = explain_prediction(applicant_data)
+
     key_drivers = filter_key_drivers(drivers) or []
 
     context = build_context(applicant_data, risk_score, "TEMP", key_drivers)
@@ -69,6 +84,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
     signals = extract_signals(context)
 
     risk_profile = aggregate_signals(signals)
+
     final_risk = risk_profile["final_risk"]
 
     risk_level = classify_risk_band(final_risk)
@@ -86,6 +102,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
         "signals": signals,
         "risk_breakdown": risk_profile,
         "key_drivers": key_drivers,
+        "consistency_check": consistency,
 
         "debug": {
             "base_risk": risk_profile["base_risk"],
@@ -112,4 +129,5 @@ if __name__ == "__main__":
         print("Decision:", result["decision"])
         print("Risk Breakdown:", result["risk_breakdown"])
         print("Signals:", result["signals"])
+        print("Consistenct check:", result["consistency_check"])
         print("Debug:", result["debug"])
