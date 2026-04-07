@@ -102,14 +102,14 @@ if __name__ == "__main__":
 
     # result = evaluate_applicant(applicant)
 
-    for i in range(1, 60):
+    for i in range(20, 30):
         applicant = fetch_applicant(i)
         result = evaluate_applicant(applicant)
 
         print(f"\nApplicant {i}:")
         print("Risk Level:", result["risk_level"])
         print("Simmilarity:", result["similarity"])
-        # print("Decision:", result["decision"])
-        # print("Risk Breakdown:", result["risk_breakdown"])
-        # print("Signals:", result["signals"])
-        # print("Debug:", result["debug"])
+        print("Decision:", result["decision"])
+        print("Risk Breakdown:", result["risk_breakdown"])
+        print("Signals:", result["signals"])
+        print("Debug:", result["debug"])

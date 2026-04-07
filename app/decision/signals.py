@@ -35,6 +35,13 @@ def classify_risk_band(score: float) -> str:
     else:
         return "Low"
     
+def prob_to_log_odds(p):
+    eps = 1e-6
+    p = min(max(p, eps), 1 - eps)
+    return math.log(p / (1 - p))
+
+def log_odds_to_prob(lo):
+    return 1 / (1 + math.exp(-lo))
 
 def extract_signals(context: dict) -> list:
     signals = []
@@ -87,18 +94,30 @@ def extract_signals(context: dict) -> list:
 
 def aggregate_signals(signals: list) -> dict:
     base_risk = 0
-    adjustment = 0
 
     for s in signals:
         if s["type"] == "base":
             base_risk = s["strength"]
-        else:
-            if s["direction"] == "negative":
-                adjustment += s["strength"]
-            else:
-                adjustment -= s["strength"]
 
-    final_risk = 1 - (1 - base_risk) * math.exp(-adjustment)
+    base_log_odds = prob_to_log_odds(base_risk)
+
+    adjustment = 0
+
+    for s in signals:
+        if s["type"] == "base":
+            continue
+
+        delta = s["strength"]
+
+        if s["direction"] == "negative":
+            adjustment += delta
+        else:
+            adjustment -= delta
+
+    final_log_odds = base_log_odds + adjustment
+
+    final_risk = log_odds_to_prob(final_log_odds)
+
     return {
         "base_risk": round(base_risk, 4),
         "adjustment": round(adjustment, 4),
