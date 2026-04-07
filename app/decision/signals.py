@@ -10,6 +10,8 @@ RISK_BANDS = {
     "very_high": 0.85
 }
 
+BUFFER = 0.03
+
 SIGNAL_CONFIG = {
     "historical_default": {
         "type": "model",
@@ -128,21 +130,42 @@ def aggregate_signals(signals: list) -> dict:
 def make_decision(risk_profile: dict, context: dict) -> tuple:
     score = risk_profile["final_risk"]
 
+    high = RISK_BANDS["high"]
+    very_high = RISK_BANDS["very_high"]
+    moderate = RISK_BANDS["moderate"]
+
+    # EXTREME CASE
     if score >= 0.88:
         return "Reject", "Extremely high calibrated risk"
-    
-    elif score >= RISK_BANDS["very_high"]:
+
+    # VERY HIGH (stable region)
+    elif score >= very_high + BUFFER:
         if context["historical_default"] == "Y":
             return "Reject", "Extreme risk with prior default"
         return "Reject or require collateral", "Extreme predicted risk"
 
-    elif score >= RISK_BANDS["high"]:
+    # VERY HIGH BUFFER ZONE
+    elif very_high - BUFFER <= score < very_high + BUFFER:
+        return "Reject or require collateral", "Borderline extreme risk (stability buffer)"
+
+    # HIGH (stable region)
+    elif score >= high + BUFFER:
         if context["is_high_dti"] or context["historical_default"] == "Y":
             return "Reject or require collateral", "Strong negative signals"
-        return "Approve with strict conditions", "High risk but no critical triggers"
+        return "Approve with strict conditions", "High risk but controlled"
 
-    elif score >= RISK_BANDS["moderate"]:
+    # HIGH BUFFER ZONE
+    elif high - BUFFER <= score < high + BUFFER:
+        return "Approve with strict conditions", "Borderline high risk (stability buffer)"
+
+    # MODERATE (stable region)
+    elif score >= moderate + BUFFER:
         return "Approve with conditions", "Moderate risk"
 
+    # MODERATE BUFFER ZONE
+    elif moderate - BUFFER <= score < moderate + BUFFER:
+        return "Approve with conditions", "Borderline moderate risk (stability buffer)"
+
+    # LOW
     else:
         return "Approve", "Low risk"
