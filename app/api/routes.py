@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from app.db.queries import fetch_applicant
 from app.tools.credit_tool import evaluate_applicant
+from app.agent.credit_agent import run_agent
+import traceback
+
 
 router = APIRouter()
 
@@ -9,7 +12,7 @@ def evaluate_borrower(borrower_id: int):
     applicant = fetch_applicant(borrower_id)
 
     if not applicant:
-        raise HTTPException(status_code=404, detail="Applicant not found")
+        raise HTTPException(status_code=404, detail="Applicant not found router")
 
     result = evaluate_applicant(applicant)
 
@@ -29,3 +32,19 @@ def evaluate_borrower(borrower_id: int):
         "consistency_check": result["consistency_check"],
         "confidence": result["confidence"]
     }
+
+
+from app.agent.credit_agent import run_agent
+
+@router.post("/analyze/{borrower_id}")
+def analyze_borrower(borrower_id: int):
+
+    try:
+        result = run_agent(borrower_id)
+        return result
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        raise HTTPException(status_code=500, detail=str(e))

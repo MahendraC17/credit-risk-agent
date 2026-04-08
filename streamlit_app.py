@@ -7,12 +7,14 @@ borrower_id = st.number_input("Enter Borrower ID", min_value=1, step=1)
 
 if st.button("Evaluate"):
 
-    response = requests.post(f"http://localhost:8000/evaluate/{borrower_id}")
+    response = requests.post(f"http://localhost:8000/analyze/{borrower_id}")
 
     if response.status_code != 200:
-        st.error("Applicant not found")
+        st.error("Applicant not found stream")
     else:
-        data = response.json()
+        api_response = response.json()
+        data = api_response["structured_output"]
+        explanation = api_response["agent_explanation"]
 
         st.header("Decision")
 
@@ -66,3 +68,7 @@ if st.button("Evaluate"):
         st.write("Level:", data["confidence"]["level"])
         if data["confidence"]["level"] == "Low":
             st.warning("Low confidence prediction — review recommended")
+
+        st.header("AI Explanation")
+
+        st.write(explanation)
