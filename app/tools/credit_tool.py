@@ -4,26 +4,59 @@ from app.decision.context import build_context
 from app.decision.signals import extract_signals, aggregate_signals, make_decision, classify_risk_band
 from app.models.similarity import find_similar
 
-def compute_confidence(model_risk, similar_risk, adjustment):
+def compute_confidence(model_risk, similarity, adjustment, final_risk):
     
-    gap = abs(model_risk - similar_risk)
+    # CONSISTENCY
+    gap = abs(model_risk - similarity["mean"])
+    consistency_score = max(0, 1 - gap * 2)
 
-    consistency_score = max(0, 1 - gap * 2)  
-
+    # SIGNAL DOMINANCE
     adjustment_penalty = min(abs(adjustment), 0.5)
+    signal_score = 1 - adjustment_penalty
 
-    confidence_score = consistency_score * (1 - adjustment_penalty)
+    # DECISION STABILITY
+    thresholds = [0.4, 0.65, 0.85] 
+    distance_to_boundary = min([abs(final_risk - t) for t in thresholds])
 
+    stability_score = min(distance_to_boundary * 4, 1)  
+
+    # SIMILARITY UNCERTAINTY
+    std = similarity["std"]
+    uncertainty_penalty = min(std * 1.5, 0.8)
+    similarity_score = 1 - uncertainty_penalty
+
+    # FINAL SCORE
+    confidence_score = (
+        0.5 * consistency_score +    
+        0.15 * signal_score +        
+        0.15 * stability_score +     
+        0.2 * similarity_score
+    )
+
+    confidence_score = max(0, min(confidence_score, 1))
+
+    # LEVEL
     if confidence_score > 0.7:
         level = "High"
-    elif confidence_score > 0.4:
+    elif confidence_score > 0.5:
         level = "Medium"
     else:
         level = "Low"
 
+    # STABILITY LABEL
+    if final_risk > 0.85 or final_risk < 0.3:
+        stability = "Stable" 
+
+    elif distance_to_boundary < 0.03:
+        stability = "Fragile"
+
+    else:
+        stability = "Moderate"
+
     return {
         "score": round(confidence_score, 4),
-        "level": level
+        "level": level,
+        "stability": stability
     }
 
 def evaluate_applicant(applicant_data: dict) -> dict:
@@ -109,7 +142,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     final_risk = risk_profile["final_risk"]
 
-    confidence = compute_confidence(model_risk, similar_risk, risk_profile["adjustment"])
+    confidence = compute_confidence(model_risk, similarity, risk_profile["adjustment"], risk_profile["final_risk"])
 
     risk_level = classify_risk_band(final_risk)
 

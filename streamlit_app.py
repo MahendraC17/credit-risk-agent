@@ -57,7 +57,8 @@ if st.button("Evaluate"):
 
         st.write("Neighbors Used:", data["similarity"]["count"])
 
-
+        st.write("Stability:", data["confidence"]["stability"])
+        
         st.header("Consistency Check")
 
         cc = data["consistency_check"]
