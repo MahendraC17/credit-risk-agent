@@ -77,8 +77,6 @@ if st.button("Evaluate"):
 
         st.header("AI Explanation")
 
-        st.header("AI Explanation")
-
         st.subheader("Summary")
         st.write(explanation["summary"])
 

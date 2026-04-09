@@ -59,12 +59,6 @@ def compute_confidence(model_risk, similarity, adjustment, final_risk):
         "stability": stability
     }
 
-# def simulate_applicant_change(applicant_data: dict, changes: dict) -> dict:
-#     modified = applicant_data.copy()
-#     modified.update(changes)
-
-#     return evaluate_applicant(modified)
-
 def simulate_to_threshold(applicant_data: dict, target_risk: float, step: float = 0.05):
 
     base_loan = applicant_data["loan_amount"]

@@ -17,12 +17,37 @@ def run_agent(borrower_id: int):
 
     result = evaluate_applicant(applicant)
 
+    decision_prompt = f"""
+    You are deciding what additional analysis is needed.
+
+    Available tools:
+    - scenario → use when risk is High/Very High or improvement is needed
+    - similarity → use when disagreement is True or confidence is Low
+    - none → if explanation is straightforward
+
+    Rules:
+    - If confidence is Low → use both
+    - If disagreement is True → include similarity
+    - If risk is High or Very High → include scenario
+    - Otherwise → none
+
+    Return ONLY one of:
+    ["scenario", "similarity", "both", "none"]
+
+    DATA:
+    {{
+    "risk_level": "{result["risk_level"]}",
+    "confidence": "{result["confidence"]["level"]}",
+    "disagreement": {result["consistency_check"]["flag"]}
+    }}
+    """
+
+    tool_decision = llm.invoke(decision_prompt).content.strip().lower()
+    tool_decision = tool_decision.replace('"', '').replace("'", "")
+
     scenario_results = []
 
-    if (result["risk_level"] in ["High", "Very High"] or 
-        result["confidence"]["level"] == "Low" or 
-        result["consistency_check"]["flag"]):
-
+    if tool_decision in ["scenario", "both"]:
         scenario = simulate_to_threshold(applicant, target_risk=0.65)
 
         if scenario:
@@ -32,13 +57,12 @@ def run_agent(borrower_id: int):
                 "new_loan_amount": scenario["new_loan"],
                 "new_risk": scenario["new_risk"],
                 "new_decision": scenario["new_decision"]
-            })
+        })
         else:
             scenario_results.append({
                 "goal": "Move to Moderate Risk",
                 "result": "Not achievable within reasonable limits"
             })
-
 
     agent_input = {
         "decision": {
@@ -80,12 +104,12 @@ def run_agent(borrower_id: int):
     include_scenario = bool(scenario_results)
 
     if include_scenario:
-        scenario_field = '"scenario_analysis": "..."'
+        scenario_field = '"scenario_analysis": "...",'
     else:
         scenario_field = ''
 
     prompt = f"""
-    You are a credit risk analyst.
+    You are a credit risk analyst. Identify the underlying risk theme (e.g., affordability, behavioral risk).
 
     STRICT RULES:
     - Use ONLY the provided data
@@ -105,6 +129,9 @@ def run_agent(borrower_id: int):
     - vague financial advice
 
     If scenarios are provided:
+    - Do NOT include improvement suggestions in final_recommendation
+    - Keep final_recommendation focused on the current decision
+    - Use scenario_analysis for improvement guidance
     - Explain what change is required to reach a safer risk level
     - Quantify the required adjustment
     - Map the new risk to a risk band
@@ -128,7 +155,7 @@ def run_agent(borrower_id: int):
     "behavioral_analysis": "...",
     "validation_analysis": "...",
     "confidence_explanation": "...",
-    {scenario_field},
+    {scenario_field}
     "final_recommendation": "..."
     }}
 
