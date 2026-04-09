@@ -98,9 +98,10 @@ if st.button("Evaluate"):
         st.subheader("Confidence Explanation")
         st.write(explanation["confidence_explanation"])
 
-        st.subheader("What Would Improve This")
-        for i in explanation["improvements"]:
-            st.write("-", i)
 
         st.subheader("Final Recommendation")
         st.write(explanation["final_recommendation"])
+
+        if "scenario_analysis" in explanation and explanation["scenario_analysis"]:
+            st.subheader("Scenario Analysis")
+            st.write(explanation["scenario_analysis"])

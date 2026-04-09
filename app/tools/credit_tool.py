@@ -59,6 +59,33 @@ def compute_confidence(model_risk, similarity, adjustment, final_risk):
         "stability": stability
     }
 
+# def simulate_applicant_change(applicant_data: dict, changes: dict) -> dict:
+#     modified = applicant_data.copy()
+#     modified.update(changes)
+
+#     return evaluate_applicant(modified)
+
+def simulate_to_threshold(applicant_data: dict, target_risk: float, step: float = 0.05):
+
+    base_loan = applicant_data["loan_amount"]
+    current = applicant_data.copy()
+
+    for reduction in range(5, 60, 5):
+        new_loan = base_loan * (1 - reduction / 100)
+
+        current["loan_amount"] = new_loan
+        result = evaluate_applicant(current)
+
+        if result["risk_breakdown"]["final_risk"] <= target_risk:
+            return {
+                "reduction_pct": reduction,
+                "new_loan": round(new_loan, 2),
+                "new_risk": result["risk_breakdown"]["final_risk"],
+                "new_decision": result["decision"]
+            }
+
+    return None 
+
 def evaluate_applicant(applicant_data: dict) -> dict:
 
     def filter_key_drivers(drivers: list, top_n: int = 3):
