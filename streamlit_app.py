@@ -48,8 +48,14 @@ if st.button("Evaluate"):
 
         st.header("Similarity")
 
-        st.write("Default Rate (Neighbors):", data["similarity"]["similar_default_rate"])
-        st.write("Neighbors Used:", data["similarity"]["neighbor_count"])
+        sim = data["similarity"]
+
+        st.write("Neighbor Mean Default Rate:", sim["mean"])
+        st.write("Std Dev:", sim["std"])
+        st.write("Sample Size:", sim["count"])
+        st.write("Confidence Band:", sim["confidence_band"])
+
+        st.write("Neighbors Used:", data["similarity"]["count"])
 
 
         st.header("Consistency Check")

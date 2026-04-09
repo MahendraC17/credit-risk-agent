@@ -86,7 +86,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
     similarity = find_similar(applicant_data)
 
     model_risk = risk_score
-    similar_risk = similarity["similar_default_rate"]
+    similar_risk = similarity["mean"]
 
     gap = abs(model_risk - similar_risk)
 

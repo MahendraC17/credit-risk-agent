@@ -12,7 +12,6 @@ llm = ChatOpenAI(
 
 def run_agent(borrower_id: int):
 
-    # 1. Fetch applicant
     applicant = fetch_applicant(borrower_id)
 
     if not applicant:

@@ -4,16 +4,13 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from app.db.connection import engine
 
-# Load model pipeline
 pipeline = joblib.load("app/models/credit_model.pkl")
 
-# unwrap calibrated model
 if hasattr(pipeline, "calibrated_classifiers_"):
     pipeline = pipeline.calibrated_classifiers_[0].estimator
 
 preprocessor = pipeline.named_steps["preprocessing"]
 
-# Load dataset once
 def load_reference_data():
     query = "SELECT * FROM borrowers"
     df = pd.read_sql(query, engine)
@@ -27,7 +24,6 @@ def load_reference_data():
 X_ref, y_ref = load_reference_data()
 X_ref_transformed = preprocessor.transform(X_ref)
 
-# Fit KNN once
 knn = NearestNeighbors(n_neighbors=30, metric="euclidean")
 knn.fit(X_ref_transformed)
 
@@ -41,11 +37,20 @@ def find_similar(applicant_data: dict):
 
     distances, indices = knn.kneighbors(X_input)
 
-    neighbor_defaults = y_ref.iloc[indices[0]]
+    neighbor_defaults = y_ref.iloc[indices[0]].values
 
-    default_rate = neighbor_defaults.mean()
+    mean = np.mean(neighbor_defaults)
+    std = np.std(neighbor_defaults)
+    count = len(neighbor_defaults)
+
+    margin = 1.96 * (std / np.sqrt(count)) if count > 0 else 0
+
+    lower = max(0, mean - margin)
+    upper = min(1, mean + margin)
 
     return {
-        "similar_default_rate": round(float(default_rate), 4),
-        "neighbor_count": len(indices[0])
-    }
+        "mean": round(float(mean), 4),
+        "std": round(float(std), 4),
+        "count": count,
+        "confidence_band": [round(float(lower), 4), round(float(upper), 4)]
+}
