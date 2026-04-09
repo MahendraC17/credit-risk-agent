@@ -58,7 +58,7 @@ if st.button("Evaluate"):
         st.write("Neighbors Used:", data["similarity"]["count"])
 
         st.write("Stability:", data["confidence"]["stability"])
-        
+
         st.header("Consistency Check")
 
         cc = data["consistency_check"]
@@ -67,7 +67,6 @@ if st.button("Evaluate"):
         st.write("Neighbor Risk:", cc["neighbor_risk"])
         st.write("Gap:", cc["gap"])
         st.write("Flag:", cc["flag"])
-
 
         st.header("Confidence")
 
@@ -78,4 +77,30 @@ if st.button("Evaluate"):
 
         st.header("AI Explanation")
 
-        st.write(explanation)
+        st.header("AI Explanation")
+
+        st.subheader("Summary")
+        st.write(explanation["summary"])
+
+        st.subheader("Risk Factors")
+        for r in explanation["risk_factors"]:
+            st.write("-", r)
+
+        st.subheader("Financial Analysis")
+        st.write(explanation["financial_analysis"])
+
+        st.subheader("Behavioral Analysis")
+        st.write(explanation["behavioral_analysis"])
+
+        st.subheader("Validation Analysis")
+        st.write(explanation["validation_analysis"])
+
+        st.subheader("Confidence Explanation")
+        st.write(explanation["confidence_explanation"])
+
+        st.subheader("What Would Improve This")
+        for i in explanation["improvements"]:
+            st.write("-", i)
+
+        st.subheader("Final Recommendation")
+        st.write(explanation["final_recommendation"])

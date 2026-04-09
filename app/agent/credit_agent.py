@@ -19,65 +19,91 @@ def run_agent(borrower_id: int):
 
     result = evaluate_applicant(applicant)
 
-    filtered_data = {
-    "decision": result["decision"],
-    "risk_score": result["risk_score"],
-    "signals": result["signals"],
-    "key_drivers": result["key_drivers"],
-    "similarity": result["similarity"],
-    "consistency": result["consistency_check"],
-    "confidence": result["confidence"]
+    agent_input = {
+        "decision": {
+            "label": result["decision"],
+            "reason": result["decision_reason"]
+        },
+
+        "risk": {
+            "score": result["risk_score"],
+            "level": result["risk_level"]
+        },
+
+        "drivers": result["key_drivers"],
+
+        "financial": {
+            "income": applicant.get("income"),
+            "loan_amount": applicant.get("loan_amount"),
+            "dti": applicant.get("debt_to_income")
+        },
+
+        "behavior": {
+            "historical_default": applicant.get("historical_default")
+        },
+
+        "validation": {
+            "model_risk": result["consistency_check"]["model_risk"],
+            "neighbor_risk": result["consistency_check"]["neighbor_risk"],
+            "gap": result["consistency_check"]["gap"],
+            "disagreement": result["consistency_check"]["flag"]
+        },
+
+        "confidence": result["confidence"]
     }
 
-    safe_data = json.dumps(filtered_data, indent=2, default=str)
-
     prompt = f"""
-    You are a senior credit risk underwriter.
+    You are a credit risk analyst.
 
-    Your job is to interpret a model-driven decision and explain it like a human expert.
+    STRICT RULES:
+    - Use ONLY the provided data
+    - DO NOT assume missing values
+    - DO NOT restate raw numbers without interpretation
+    - If disagreement is present → explicitly explain it
+    - If confidence is low → recommend manual review
 
-    Do NOT repeat raw values without interpretation.
+    You must return a VALID JSON with this structure:
+    Return ONLY raw JSON.
+    Do NOT wrap in markdown.
+    Do NOT add explanations.
 
-    Focus on:
-    - WHY the applicant is risky
-    - WHICH factors matter most
-    - WHETHER the decision is reliable
-
-    Use this structure:
-
-    1. Decision Summary  
-    - State decision + risk level  
-    - Brief justification (1–2 lines)
-
-    2. Primary Risk Drivers  
-    - Identify the MOST impactful drivers (not all)  
-    - Explain causality (e.g., affordability, behavior)
-
-    3. Financial Assessment  
-    - Interpret DTI, income vs loan  
-    - Explain financial stress (if present)
-
-    4. Behavioral Risk  
-    - Interpret historical default (if present)
-
-    5. Market Comparison  
-    - Compare model risk vs similar borrowers  
-    - Explain whether model is aligned with reality
-
-    6. Confidence Interpretation  
-    - Explain WHY confidence is high/low  
-    - Highlight disagreement or instability
-
-    7. Final Underwriting View  
-    - Summarize overall risk in plain language
+    {{
+    "summary": "...",
+    "risk_factors": ["...", "..."],
+    "financial_analysis": "...",
+    "behavioral_analysis": "...",
+    "validation_analysis": "...",
+    "confidence_explanation": "...",
+    "improvements": ["...", "..."],
+    "final_recommendation": "..."
+    }}
 
     DATA:
-    {safe_data}
+    {agent_input}
     """
+    
 
     response = llm.invoke(prompt)
 
-    explanation = response.content
+    raw = response.content.strip()
+
+    if raw.startswith("```"):
+        raw = raw.replace("```json", "").replace("```", "").strip()
+
+    try:
+        explanation = json.loads(raw)
+
+    except Exception as e:
+        explanation = {
+            "summary": "Unable to parse structured response",
+            "risk_factors": [],
+            "financial_analysis": raw,
+            "behavioral_analysis": "",
+            "validation_analysis": "",
+            "confidence_explanation": "",
+            "improvements": [],
+            "final_recommendation": "Manual review required"
+        }
 
     return {
         "structured_output": result,
