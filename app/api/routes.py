@@ -30,7 +30,10 @@ def evaluate_borrower(borrower_id: int):
 
         "similarity": result["similarity"],
         "consistency_check": result["consistency_check"],
-        "confidence": result["confidence"]
+        "confidence": result["confidence"],
+
+        "sensitivity": result["sensitivity"],
+        "tension": result["tension"],
     }
 
 

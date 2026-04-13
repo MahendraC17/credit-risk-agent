@@ -80,6 +80,67 @@ def simulate_to_threshold(applicant_data: dict, target_risk: float, step: float 
 
     return None 
 
+def compute_sensitivity(final_risk: float):
+    thresholds = [0.4, 0.65, 0.85]
+
+    distances = {t: abs(final_risk - t) for t in thresholds}
+
+    closest_threshold = min(distances, key=distances.get)
+    distance = distances[closest_threshold]
+
+    flip_risk = distance < 0.03
+
+    return {
+        "distance_to_threshold": round(distance, 4),
+        "closest_threshold": closest_threshold,
+        "flip_risk": flip_risk
+    }
+
+def classify_disagreement(gap: float):
+
+    if gap > 0.7:
+        return "Severe"
+    elif gap > 0.4:
+        return "High"
+    elif gap > 0.25:
+        return "Moderate"
+    else:
+        return "Low"
+    
+
+def compute_tension(signals, model_risk, similarity):
+    
+    positive = 0
+    negative = 0
+
+    for s in signals:
+        if s["direction"] == "positive":
+            positive += s["strength"]
+        elif s["direction"] == "negative":
+            negative += s["strength"]
+
+    signal_tension = min(positive, negative)
+
+    external_gap = abs(model_risk - similarity["mean"])
+
+    tension_score = 0.7 * external_gap + 0.3 * signal_tension
+
+    if tension_score > 0.5:
+        level = "High"
+    elif tension_score > 0.25:
+        level = "Medium"
+    else:
+        level = "Low"
+
+    return {
+        "score": round(tension_score, 4),
+        "level": level,
+        "components": {
+            "signal_conflict": round(signal_tension, 4),
+            "model_vs_similarity_gap": round(external_gap, 4)
+        }
+    }
+
 def evaluate_applicant(applicant_data: dict) -> dict:
 
     def filter_key_drivers(drivers: list, top_n: int = 3):
@@ -144,11 +205,16 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     gap = abs(model_risk - similar_risk)
 
+    disagreement_level = classify_disagreement(gap)
+    override_flag = gap > 0.5
+
     consistency = {
         "model_risk": round(model_risk, 4),
         "neighbor_risk": round(similar_risk, 4),
         "gap": round(gap, 4),
-        "flag": gap > 0.25
+        "flag": gap > 0.25,
+        "disagreement_level": disagreement_level,
+        "override_flag": override_flag
     }
 
     drivers = explain_prediction(applicant_data)
@@ -163,13 +229,35 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     final_risk = risk_profile["final_risk"]
 
+    sensitivity = compute_sensitivity(final_risk)
+
     confidence = compute_confidence(model_risk, similarity, risk_profile["adjustment"], risk_profile["final_risk"])
 
     risk_level = classify_risk_band(final_risk)
 
     context = build_context(applicant_data, final_risk, risk_level, key_drivers)
 
+    tension = compute_tension(signals, model_risk, similarity)
+
     decision, reason = make_decision(risk_profile, context)
+
+    override = consistency["override_flag"]
+    disagreement = consistency["disagreement_level"]
+    confidence_level = confidence["level"]
+
+    escalation = None
+
+    if override:
+        escalation = "REVIEW_REQUIRED"
+
+    elif disagreement == "High" and confidence_level == "Low":
+        escalation = "MANUAL_REVIEW"
+
+    elif sensitivity["flip_risk"]:
+        escalation = "BORDERLINE_REVIEW"
+
+    else:
+        escalation = "AUTO_DECISION"
 
     return {
         "risk_score": round(risk_score, 4),
@@ -182,7 +270,10 @@ def evaluate_applicant(applicant_data: dict) -> dict:
         "key_drivers": key_drivers,
         "consistency_check": consistency,
         "confidence": confidence,
-
+        "sensitivity": sensitivity,
+        "tension": tension,
+        "escalation": escalation,
+        
         # "debug": {
         #     "base_risk": risk_profile["base_risk"],
         #     "adjustment": risk_profile["adjustment"],
@@ -198,17 +289,86 @@ if __name__ == "__main__":
 
     # result = evaluate_applicant(applicant)
 
-    for i in range(20, 30):
+    # for i in range(20, 30):
+    #     applicant = fetch_applicant(i)
+    #     result = evaluate_applicant(applicant)
+
+    #     print(f"\nApplicant {i}:")
+    #     print("Risk Level:", result["risk_level"])
+    #     print("Simmilarity:", result["similarity"])
+    #     print("Decision:", result["decision"])
+    #     print("Risk Breakdown:", result["risk_breakdown"])
+    #     print("Signals:", result["signals"])
+    #     print("Consistenct check:", result["consistency_check"])
+    #     print("Confidence:", result["confidence"])
+
+    def classify_case(result):
+        gap = result["consistency_check"]["gap"]
+        flip = result["sensitivity"]["flip_risk"]
+        tension = result["tension"]["score"]
+        confidence = result["confidence"]["level"]
+
+        if gap > 0.25:
+            return "MODEL_DISAGREEMENT"
+
+        if flip:
+            return "BOUNDARY_CASE"
+
+        if tension > 0.3:
+            return "HIGH_TENSION"
+
+        if confidence == "Low":
+            return "LOW_CONFIDENCE"
+
+        return "NORMAL"
+    
+    interesting_cases = []
+
+    for i in range(1, 200):
         applicant = fetch_applicant(i)
+        if not applicant:
+            continue
+
         result = evaluate_applicant(applicant)
 
-        print(f"\nApplicant {i}:")
-        print("Risk Level:", result["risk_level"])
-        print("Simmilarity:", result["similarity"])
-        print("Decision:", result["decision"])
-        print("Risk Breakdown:", result["risk_breakdown"])
-        print("Signals:", result["signals"])
-        print("Consistenct check:", result["consistency_check"])
-        print("Confidence:", result["confidence"])
+        case_type = classify_case(result)
 
-        # print("Debug:", result["debug"])
+        if case_type != "NORMAL":
+            interesting_cases.append((i, case_type, result))
+
+    for i, case_type, result in interesting_cases:
+
+        print("\n" + "="*60)
+        print(f"Applicant {i} → {case_type}")
+        print("="*60)
+
+        print("Risk:", result["risk_level"], "| Score:", result["risk_score"])
+        print("Decision:", result["decision"])
+
+        print("\n--- Sensitivity ---")
+        print(result["sensitivity"])
+
+        print("\n--- Tension ---")
+        print(result["tension"])
+
+        print("\n--- Consistency ---")
+        c = result["consistency_check"]
+
+        print("Model Risk:", c["model_risk"])
+        print("Neighbor Risk:", c["neighbor_risk"])
+        print("Gap:", c["gap"])
+        print("Disagreement Level:", c["disagreement_level"])
+        print("Override Flag:", c["override_flag"])
+
+        print("\n--- Confidence ---")
+        print(result["confidence"])
+
+    from collections import Counter
+
+    counts = Counter([case_type for _, case_type, _ in interesting_cases])
+
+    print("\n\n===== SUMMARY =====")
+    for k, v in counts.items():
+        print(f"{k}: {v}")
+
+            # print("Debug:", result["debug"])

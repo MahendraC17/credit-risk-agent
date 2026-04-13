@@ -75,6 +75,24 @@ if st.button("Evaluate"):
         if data["confidence"]["level"] == "Low":
             st.warning("Low confidence prediction — review recommended")
 
+        st.header("Decision Sensitivity")
+
+        sens = data["sensitivity"]
+
+        st.write("Distance to Threshold:", sens["distance_to_threshold"])
+        st.write("Closest Threshold:", sens["closest_threshold"])
+        st.write("Flip Risk:", sens["flip_risk"])
+
+        st.header("Decision Tension")
+
+        tension = data["tension"]
+
+        st.metric("Tension Score", tension["score"])
+        st.write("Level:", tension["level"])
+
+        st.write("Signal Conflict:", tension["components"]["signal_conflict"])
+        st.write("Model vs Similarity Gap:", tension["components"]["model_vs_similarity_gap"])
+
         st.header("AI Explanation")
 
         st.subheader("Summary")
