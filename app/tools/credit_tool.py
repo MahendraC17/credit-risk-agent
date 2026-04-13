@@ -96,13 +96,13 @@ def compute_sensitivity(final_risk: float):
         "flip_risk": flip_risk
     }
 
-def classify_disagreement(gap: float):
+def classify_disagreement(z_gap: float):
 
-    if gap > 0.7:
+    if z_gap > 3:
         return "Severe"
-    elif gap > 0.4:
+    elif z_gap > 2:
         return "High"
-    elif gap > 0.25:
+    elif z_gap > 1:
         return "Moderate"
     else:
         return "Low"
@@ -205,16 +205,20 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     gap = abs(model_risk - similar_risk)
 
-    disagreement_level = classify_disagreement(gap)
-    override_flag = gap > 0.5
+    std = similarity["std"] + 1e-6
+    z_gap = gap / std
+
+    disagreement_level = classify_disagreement(z_gap)
+    override_flag = z_gap > 3
 
     consistency = {
-        "model_risk": round(model_risk, 4),
-        "neighbor_risk": round(similar_risk, 4),
-        "gap": round(gap, 4),
-        "flag": gap > 0.25,
-        "disagreement_level": disagreement_level,
-        "override_flag": override_flag
+    "model_risk": round(model_risk, 4),
+    "neighbor_risk": round(similar_risk, 4),
+    "gap": round(gap, 4),
+    "z_gap": round(z_gap, 4),  
+    "flag": z_gap > 1,        
+    "disagreement_level": disagreement_level,
+    "override_flag": override_flag
     }
 
     drivers = explain_prediction(applicant_data)
@@ -250,7 +254,7 @@ def evaluate_applicant(applicant_data: dict) -> dict:
     if override:
         escalation = "REVIEW_REQUIRED"
 
-    elif disagreement == "High" and confidence_level == "Low":
+    elif confidence_level == "Low":
         escalation = "MANUAL_REVIEW"
 
     elif sensitivity["flip_risk"]:

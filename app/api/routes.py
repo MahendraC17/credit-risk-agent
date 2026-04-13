@@ -2,8 +2,6 @@ from fastapi import APIRouter, HTTPException
 from app.db.queries import fetch_applicant
 from app.tools.credit_tool import evaluate_applicant
 from app.agent.credit_agent import run_agent
-import traceback
-
 
 router = APIRouter()
 
@@ -29,12 +27,20 @@ def evaluate_borrower(borrower_id: int):
         "key_drivers": result["key_drivers"],
 
         "similarity": result["similarity"],
-        "consistency_check": result["consistency_check"],
-        "confidence": result["confidence"],
 
+        "consistency_check": result["consistency_check"],
+
+        "validation_summary": {
+            "disagreement_level": result["consistency_check"]["disagreement_level"],
+            "z_gap": result["consistency_check"].get("z_gap"),
+            "override": result["consistency_check"]["override_flag"]
+        },
+
+        "confidence": result["confidence"],
         "sensitivity": result["sensitivity"],
         "tension": result["tension"],
-    }
+        "escalation": result["escalation"],  
+            }
 
 
 from app.agent.credit_agent import run_agent
@@ -44,7 +50,11 @@ def analyze_borrower(borrower_id: int):
 
     try:
         result = run_agent(borrower_id)
-        return result
+        return {
+        "structured_output": result["structured_output"],
+        "agent_explanation": result["agent_explanation"],
+        "escalation": result["structured_output"]["escalation"]
+        }
 
     except Exception as e:
         import traceback

@@ -66,7 +66,15 @@ if st.button("Evaluate"):
         st.write("Model Risk:", cc["model_risk"])
         st.write("Neighbor Risk:", cc["neighbor_risk"])
         st.write("Gap:", cc["gap"])
-        st.write("Flag:", cc["flag"])
+        st.write("Z-Score Gap:", cc.get("z_gap"))
+
+        if cc["override_flag"]:
+            st.error("Severe disagreement between model and data")
+        elif cc["disagreement_level"] in ["High", "Moderate"]:
+            st.warning("Model and similar cases show mismatch")
+
+        st.write("Disagreement Level:", cc["disagreement_level"])
+        st.write("Override Flag:", cc["override_flag"])
 
         st.header("Confidence")
 
@@ -92,6 +100,27 @@ if st.button("Evaluate"):
 
         st.write("Signal Conflict:", tension["components"]["signal_conflict"])
         st.write("Model vs Similarity Gap:", tension["components"]["model_vs_similarity_gap"])
+
+        st.header("Decision Routing")
+
+        escalation = data.get("escalation", "UNKNOWN")
+
+        if escalation == "AUTO_DECISION":
+            st.success("Auto Decision — High confidence")
+        elif escalation == "MANUAL_REVIEW":
+            st.warning("Manual Review Required")
+        elif escalation == "BORDERLINE_REVIEW":
+            st.warning("Borderline Case — Sensitive Decision")
+        elif escalation == "REVIEW_REQUIRED":
+            st.error("Model Override — Investigation Needed")
+        else:
+            st.write(escalation)
+
+        if data["confidence"]["level"] == "Low":
+            st.warning("Low confidence — system recommends review")
+
+        if data.get("escalation") != "AUTO_DECISION":
+            st.warning(f"Escalation Triggered: {data.get('escalation')}")
 
         st.header("AI Explanation")
 

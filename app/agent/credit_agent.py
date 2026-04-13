@@ -94,7 +94,8 @@ def run_agent(borrower_id: int):
             "disagreement": result["consistency_check"]["flag"]
         },
 
-        "confidence": result["confidence"]
+        "confidence": result["confidence"],
+        "escalation": result["escalation"]
 
     }
 
@@ -141,6 +142,12 @@ def run_agent(borrower_id: int):
     If no scenarios are provided:
     - Do NOT suggest improvements
     - Do NOT mention hypothetical changes
+
+    If disagreement exists:
+    - explain whether it is caused by model limitation or similarity uncertainty
+
+    If escalation is not AUTO_DECISION:
+    - clearly state why manual review is required
 
     Return ONLY valid JSON.
     Do NOT wrap in markdown.
