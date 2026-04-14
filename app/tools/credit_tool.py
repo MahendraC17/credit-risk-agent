@@ -141,6 +141,87 @@ def compute_tension(signals, model_risk, similarity):
         }
     }
 
+def get_risk_profile(applicant_data: dict):
+
+    risk_score = predict_risk(applicant_data)
+
+    drivers = explain_prediction(applicant_data)
+    key_drivers = drivers[:3]
+
+    context = build_context(applicant_data, risk_score, "TEMP", key_drivers)
+    signals = extract_signals(context)
+
+    risk_profile = aggregate_signals(signals)
+    final_risk = risk_profile["final_risk"]
+
+    risk_level = classify_risk_band(final_risk)
+
+    decision, reason = make_decision(risk_profile, context)
+
+    return {
+        "risk_score": risk_score,
+        "risk_level": risk_level,
+        "decision": decision,
+        "decision_reason": reason,
+        "risk_breakdown": risk_profile,
+        "signals": signals,
+        "key_drivers": key_drivers
+    }
+
+def get_similarity_analysis(applicant_data: dict):
+    return find_similar(applicant_data)
+
+def get_decision_diagnostics(applicant_data: dict):
+
+    risk_score = predict_risk(applicant_data)
+    similarity = find_similar(applicant_data)
+
+    gap = abs(risk_score - similarity["mean"])
+    std = similarity["std"] + 1e-6
+    z_gap = gap / std
+
+    disagreement_level = classify_disagreement(z_gap)
+    override_flag = z_gap > 3
+
+    consistency = {
+        "model_risk": risk_score,
+        "neighbor_risk": similarity["mean"],
+        "gap": gap,
+        "z_gap": z_gap,
+        "flag": z_gap > 1,
+        "disagreement_level": disagreement_level,
+        "override_flag": override_flag
+    }
+
+    # reuse existing functions
+    context = build_context(applicant_data, risk_score, "TEMP", [])
+    signals = extract_signals(context)
+    risk_profile = aggregate_signals(signals)
+
+    final_risk = risk_profile["final_risk"]
+
+    confidence = compute_confidence(
+        risk_score,
+        similarity,
+        risk_profile["adjustment"],
+        final_risk
+    )
+
+    sensitivity = compute_sensitivity(final_risk)
+
+    tension = compute_tension(signals, risk_score, similarity)
+
+    return {
+        "consistency_check": consistency,
+        "confidence": confidence,
+        "sensitivity": sensitivity,
+        "tension": tension
+    }
+
+def run_scenario_analysis(applicant_data: dict):
+    return simulate_to_threshold(applicant_data, target_risk=0.65)
+
+
 def evaluate_applicant(applicant_data: dict) -> dict:
 
     def filter_key_drivers(drivers: list, top_n: int = 3):
@@ -233,17 +314,19 @@ def evaluate_applicant(applicant_data: dict) -> dict:
 
     final_risk = risk_profile["final_risk"]
 
-    sensitivity = compute_sensitivity(final_risk)
-
-    confidence = compute_confidence(model_risk, similarity, risk_profile["adjustment"], risk_profile["final_risk"])
-
     risk_level = classify_risk_band(final_risk)
 
     context = build_context(applicant_data, final_risk, risk_level, key_drivers)
 
-    tension = compute_tension(signals, model_risk, similarity)
-
     decision, reason = make_decision(risk_profile, context)
+
+    sensitivity = compute_sensitivity(final_risk)
+
+    confidence = compute_confidence(model_risk, similarity, risk_profile["adjustment"], risk_profile["final_risk"])
+
+    context = build_context(applicant_data, final_risk, risk_level, key_drivers)
+
+    tension = compute_tension(signals, model_risk, similarity)
 
     override = consistency["override_flag"]
     disagreement = consistency["disagreement_level"]
@@ -277,34 +360,11 @@ def evaluate_applicant(applicant_data: dict) -> dict:
         "sensitivity": sensitivity,
         "tension": tension,
         "escalation": escalation,
-        
-        # "debug": {
-        #     "base_risk": risk_profile["base_risk"],
-        #     "adjustment": risk_profile["adjustment"],
-        #     "final_risk": risk_profile["final_risk"],
-        #     "signals": signals
-        #         }
+
     }
 
 if __name__ == "__main__":
     from app.db.queries import fetch_applicant
-
-    # applicant = fetch_applicant(3)
-
-    # result = evaluate_applicant(applicant)
-
-    # for i in range(20, 30):
-    #     applicant = fetch_applicant(i)
-    #     result = evaluate_applicant(applicant)
-
-    #     print(f"\nApplicant {i}:")
-    #     print("Risk Level:", result["risk_level"])
-    #     print("Simmilarity:", result["similarity"])
-    #     print("Decision:", result["decision"])
-    #     print("Risk Breakdown:", result["risk_breakdown"])
-    #     print("Signals:", result["signals"])
-    #     print("Consistenct check:", result["consistency_check"])
-    #     print("Confidence:", result["confidence"])
 
     def classify_case(result):
         gap = result["consistency_check"]["gap"]
@@ -375,4 +435,3 @@ if __name__ == "__main__":
     for k, v in counts.items():
         print(f"{k}: {v}")
 
-            # print("Debug:", result["debug"])

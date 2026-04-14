@@ -48,14 +48,17 @@ if st.button("Evaluate"):
 
         st.header("Similarity")
 
-        sim = data["similarity"]
+        sim = data.get("similarity")
 
-        st.write("Neighbor Mean Default Rate:", sim["mean"])
-        st.write("Std Dev:", sim["std"])
-        st.write("Sample Size:", sim["count"])
-        st.write("Confidence Band:", sim["confidence_band"])
+        if sim:
+            st.write("Neighbor Mean Default Rate:", sim["mean"])
+            st.write("Std Dev:", sim["std"])
+            st.write("Sample Size:", sim["count"])
+            st.write("Confidence Band:", sim["confidence_band"])
 
-        st.write("Neighbors Used:", data["similarity"]["count"])
+            st.write("Neighbors Used:", sim["count"])
+        else:
+            st.info("Similarity analysis not required for this case")
 
         st.write("Stability:", data["confidence"]["stability"])
 
