@@ -1,6 +1,10 @@
+# --------------------------------------------------------------------------------
+# Preprocessing data 
+# Keeping important features for Model and aligning with DB
+# --------------------------------------------------------------------------------
+
 import pandas as pd
 from app.data_processing.cleaning import clean_credit_data
-
 
 def preprocess_credit_data(df: pd.DataFrame) -> pd.DataFrame:
 

@@ -1,40 +1,64 @@
+# --------------------------------------------------------------------------------
+# Agent Layer
+# Orchestrating tools, deciding additional analysis, and generating structured
+# explanations using LLM
+# --------------------------------------------------------------------------------
+
 import json
 from langchain_openai import ChatOpenAI
 from app.db.queries import fetch_applicant
-from app.tools.credit_tool import (get_risk_profile, get_decision_diagnostics, get_similarity_analysis, run_scenario_analysis)
+from app.tools.credit_tool import (
+    get_risk_profile,
+    get_decision_diagnostics,
+    get_similarity_analysis,
+    run_scenario_analysis,
+    compute_escalation
+)
 
 
+
+# Initializing LLM
 llm = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0
 )
 
+
+# --------------------------------------------------------------------------------
+# Main Agent Entry Point
+# Running full pipeline for a borrower and generating explanation
+# --------------------------------------------------------------------------------
 def run_agent(borrower_id: int):
 
     applicant = fetch_applicant(borrower_id)
 
     if not applicant:
-        raise ValueError("Applicant not found")
+        raise ValueError("Applicant not found - Agent Side")
 
+    # Running core tools
     risk = get_risk_profile(applicant)
     diagnostics = get_decision_diagnostics(applicant)
 
+    # Merging outputs
     result = {**risk, **diagnostics}
+
+    # --------------------------------------------------------------------------------
+    # Escalation Logic
+    # Determining whether decision should be automated or reviewed
+    # --------------------------------------------------------------------------------
     consistency = result["consistency_check"]
     confidence = result["confidence"]
     sensitivity = result["sensitivity"]
 
-    if consistency["override_flag"]:
-        escalation = "REVIEW_REQUIRED"
-    elif confidence["level"] == "Low":
-        escalation = "MANUAL_REVIEW"
-    elif sensitivity["flip_risk"]:
-        escalation = "BORDERLINE_REVIEW"
-    else:
-        escalation = "AUTO_DECISION"
+    escalation = compute_escalation(consistency, confidence, sensitivity)
 
     result["escalation"] = escalation
 
+
+    # --------------------------------------------------------------------------------
+    # Tool Selection (Agent Decision Step)
+    # Deciding whether additional analysis is needed
+    # --------------------------------------------------------------------------------
     decision_prompt = f"""
     You are deciding what additional analysis is needed.
 
@@ -63,13 +87,21 @@ def run_agent(borrower_id: int):
     tool_decision = llm.invoke(decision_prompt).content.strip().lower()
     tool_decision = tool_decision.replace('"', '').replace("'", "").strip()
 
+    # Safety fallback
     if tool_decision not in ["scenario", "similarity", "both", "none"]:
         tool_decision = "none"
 
+
+    # --------------------------------------------------------------------------------
+    # Tool Execution
+    # Running scenario with similarity analysis based on decision
+    # --------------------------------------------------------------------------------
     scenario_results = []
 
+    # Scenario tool
     if tool_decision in ["scenario", "both"]:
         scenario = run_scenario_analysis(applicant)
+
         if scenario:
             scenario_results.append({
                 "goal": "Move to Moderate Risk",
@@ -77,17 +109,23 @@ def run_agent(borrower_id: int):
                 "new_loan_amount": scenario["new_loan"],
                 "new_risk": scenario["new_risk"],
                 "new_decision": scenario["new_decision"]
-        })
+            })
         else:
             scenario_results.append({
                 "goal": "Move to Moderate Risk",
                 "result": "Not achievable within reasonable limits"
             })
 
+    # Similarity tool
     if tool_decision in ["similarity", "both"]:
         similarity = get_similarity_analysis(applicant)
         result["similarity"] = similarity
 
+
+    # --------------------------------------------------------------------------------
+    # Preparing Input for LLM Explanation
+    # Structuring data into a clean, interpretable format
+    # --------------------------------------------------------------------------------
     agent_input = {
         "decision": {
             "label": result["decision"],
@@ -120,12 +158,16 @@ def run_agent(borrower_id: int):
 
         "confidence": result["confidence"],
         "escalation": result["escalation"]
-
     }
 
     if scenario_results:
         agent_input["scenarios"] = scenario_results
 
+
+    # --------------------------------------------------------------------------------
+    # Dynamic Prompt Adjustment
+    # Including scenario field only when needed
+    # --------------------------------------------------------------------------------
     include_scenario = bool(scenario_results)
 
     if include_scenario:
@@ -133,39 +175,31 @@ def run_agent(borrower_id: int):
     else:
         scenario_field = ''
 
+
+    # --------------------------------------------------------------------------------
+    # Explanation Prompt
+    # Generating structured reasoning output using LLM
+    # --------------------------------------------------------------------------------
     prompt = f"""
-    You are a credit risk analyst. Identify the underlying risk theme (e.g., affordability, behavioral risk).
+    You are a credit risk analyst. Identify the underlying risk theme.
 
     STRICT RULES:
     - Use ONLY the provided data
     - DO NOT assume missing values
     - DO NOT restate raw numbers without interpretation
-    - If disagreement is present → explicitly explain it
-    - If confidence is low → recommend manual review
+    - If disagreement is present - explicitly explain it
+    - If confidence is low - recommend manual review
 
     Allowed improvement actions are LIMITED to:
     - reducing loan amount
-    - increasing declared income (without assuming how)
-
-    Do NOT suggest:
-    - side jobs
-    - employment changes
-    - lifestyle changes
-    - vague financial advice
+    - increasing declared income
 
     If scenarios are provided:
-    - Do NOT include improvement suggestions in final_recommendation
-    - Keep final_recommendation focused on the current decision
+    - Do NOT include improvements in final_recommendation
     - Use scenario_analysis for improvement guidance
-    - Explain what change is required to reach a safer risk level
-    - Quantify the required adjustment
-    - Map the new risk to a risk band
-    - Explain how the decision changes
-    - Do NOT use vague language
 
     If no scenarios are provided:
     - Do NOT suggest improvements
-    - Do NOT mention hypothetical changes
 
     If disagreement exists:
     - explain whether it is caused by model limitation or similarity uncertainty
@@ -174,10 +208,6 @@ def run_agent(borrower_id: int):
     - clearly state why manual review is required
 
     Return ONLY valid JSON.
-    Do NOT wrap in markdown.
-    Do NOT include explanations outside JSON.
-
-    The JSON must follow this structure:
 
     {{
     "summary": "...",
@@ -193,19 +223,19 @@ def run_agent(borrower_id: int):
     DATA:
     {agent_input}
     """
-    
 
     response = llm.invoke(prompt)
-
     raw = response.content.strip()
 
+    # Cleaning markdown if present
     if raw.startswith("```"):
         raw = raw.replace("```json", "").replace("```", "").strip()
 
+    # Parsing structured output
     try:
         explanation = json.loads(raw)
 
-    except Exception as e:
+    except Exception:
         explanation = {
             "summary": "Unable to parse structured response",
             "risk_factors": [],

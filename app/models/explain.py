@@ -1,3 +1,8 @@
+# --------------------------------------------------------------------------------
+# Explainability Layer
+# Generating feature level explanations using SHAP to understand model decisions
+# --------------------------------------------------------------------------------
+
 import joblib
 import pandas as pd
 import shap
@@ -6,8 +11,14 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
+# --------------------------------------------------------------------------------
+# Loading model pipeline and extracting core components for explanation
+# --------------------------------------------------------------------------------
+
 pipeline = joblib.load("app/models/credit_model.pkl")
 
+# Handling different model wrappers
+# Ensuring accessing the underlying model consistently
 if hasattr(pipeline, "calibrated_classifiers_"):
     pipeline = pipeline.calibrated_classifiers_[0].estimator
 
@@ -17,20 +28,31 @@ elif hasattr(pipeline, "base_estimator"):
 elif hasattr(pipeline, "estimators_"):
     pipeline = pipeline.estimators_[0]
 
+# Extracting model and preprocessing steps from pipeline
 model = pipeline.named_steps["model"]
 preprocessor = pipeline.named_steps["preprocessing"]
 
+# Initializing SHAP explainer for tree based model
 explainer = shap.TreeExplainer(model)
 
+
+# --------------------------------------------------------------------------------
+# Feature Name Cleaning
+# Converting transformed feature names into readable format
+# --------------------------------------------------------------------------------
 def clean_feature_name(feature: str):
+
+    # Removing preprocessing prefixes
     feature = feature.replace("num__", "").replace("cat__", "")
 
+    # Identifying categorical fields that were one-hot encoded
     categorical_fields = {
         "home_ownership",
         "loan_purpose",
         "historical_default"
     }
 
+    # Splitting encoded feature into base feature and category value
     for field in categorical_fields:
         if feature.startswith(field + "_"):
             value = feature[len(field) + 1:]
@@ -38,7 +60,13 @@ def clean_feature_name(feature: str):
 
     return feature, None
 
+
+# --------------------------------------------------------------------------------
+# SHAP Explanation
+# Generating top contributing features influencing the prediction
+# --------------------------------------------------------------------------------
 def explain_prediction(applicant_data: dict, top_n: int = 5):
+
     df = prepare_input(applicant_data)
 
     X_transformed = preprocessor.transform(df)
@@ -47,6 +75,7 @@ def explain_prediction(applicant_data: dict, top_n: int = 5):
 
     shap_values = explainer.shap_values(X_transformed)
 
+    # Handling binary classification output format
     if isinstance(shap_values, list):
         values = shap_values[1][0]
     else:
@@ -57,22 +86,26 @@ def explain_prediction(applicant_data: dict, top_n: int = 5):
         "impact": values
     })
 
+    # Sorting features by absolute contribution
     shap_df["abs_impact"] = shap_df["impact"].abs()
     shap_df = shap_df.sort_values(by="abs_impact", ascending=False)
 
     cleaned_output = []
 
+    # Processing top features and converting into readable format
     for _, row in shap_df.head(top_n).iterrows():
         raw_feature = row["feature"]
         impact = row["impact"]
 
         base_feature, category = clean_feature_name(raw_feature)
 
+        # Interpreting direction of impact
         if impact > 0:
             effect = "increases likelihood of default"
         else:
             effect = "reduces likelihood of default"
 
+        # Formatting feature name for categorical vs numerical
         if category:
             feature_name = f"{base_feature} = {category}"
         else:
@@ -87,12 +120,12 @@ def explain_prediction(applicant_data: dict, top_n: int = 5):
 
     return cleaned_output
 
+
 if __name__ == "__main__":
     from app.db.queries import fetch_applicant
 
-    applicant = fetch_applicant(3)
-    explanation = explain_prediction(applicant)
-
-    print("\nTop Risk Drivers:")
-    for item in explanation:
-        print(item)
+    # applicant = fetch_applicant(3)
+    # explanation = explain_prediction(applicant)
+    # print("\nTop Risk Drivers:")
+    # for item in explanation:
+    #     print(item)

@@ -1,27 +1,46 @@
+# --------------------------------------------------------------------------------
+# UI Layer
+# Displaying credit decision outputs and agent explanations in a structured format
+# --------------------------------------------------------------------------------
+
 import streamlit as st
 import requests
 
 st.title("Credit Risk Underwriting System")
 
+# Input
 borrower_id = st.number_input("Enter Borrower ID", min_value=1, step=1)
 
+
+# --------------------------------------------------------------------------------
+# Triggering API call
+# Fetching analyzed output from backend agent endpoint
+# --------------------------------------------------------------------------------
 if st.button("Evaluate"):
 
     response = requests.post(f"http://localhost:8000/analyze/{borrower_id}")
 
     if response.status_code != 200:
-        st.error("Applicant not found stream")
+        st.error("Applicant not found from streamlit")
     else:
         api_response = response.json()
+
+        # Splitting structured system output and LLM explanation
         data = api_response["structured_output"]
         explanation = api_response["agent_explanation"]
 
-        st.header("Decision")
 
+        # --------------------------------------------------------------------------------
+        # Decision Summary
+        # --------------------------------------------------------------------------------
+        st.header("Decision")
         st.subheader(f"{data['decision']}")
         st.write(data["decision_reason"])
 
 
+        # --------------------------------------------------------------------------------
+        # Risk Overview
+        # --------------------------------------------------------------------------------
         st.header("Risk Overview")
 
         st.metric("Risk Score", round(data["risk_score"], 4))
@@ -34,18 +53,28 @@ if st.button("Evaluate"):
         st.write("Final Risk:", rb["final_risk"])
 
 
+        # --------------------------------------------------------------------------------
+        # Signals (Rule based + model signals)
+        # --------------------------------------------------------------------------------
         st.header("Signals")
 
         for s in data["signals"]:
             st.write(f"{s['name']} | {s['direction']} | strength: {s['strength']}")
 
 
+        # --------------------------------------------------------------------------------
+        # Key Drivers (Top SHAP features)
+        # --------------------------------------------------------------------------------
         st.header("Key Drivers")
 
         for d in data["key_drivers"]:
             st.write(f"{d['feature']} → {d['effect']} (impact: {d['impact']})")
 
 
+        # --------------------------------------------------------------------------------
+        # Similarity (Peer Comparison)
+        # Displaying only if agent decides it is relevant
+        # --------------------------------------------------------------------------------
         st.header("Similarity")
 
         sim = data.get("similarity")
@@ -55,13 +84,17 @@ if st.button("Evaluate"):
             st.write("Std Dev:", sim["std"])
             st.write("Sample Size:", sim["count"])
             st.write("Confidence Band:", sim["confidence_band"])
-
             st.write("Neighbors Used:", sim["count"])
         else:
             st.info("Similarity analysis not required for this case")
 
+        # Showing stability from confidence layer
         st.write("Stability:", data["confidence"]["stability"])
 
+
+        # --------------------------------------------------------------------------------
+        # Consistency Check (Model vs Similarity Validation)
+        # --------------------------------------------------------------------------------
         st.header("Consistency Check")
 
         cc = data["consistency_check"]
@@ -71,6 +104,7 @@ if st.button("Evaluate"):
         st.write("Gap:", cc["gap"])
         st.write("Z-Score Gap:", cc.get("z_gap"))
 
+        # Highlighting disagreement severity
         if cc["override_flag"]:
             st.error("Severe disagreement between model and data")
         elif cc["disagreement_level"] in ["High", "Moderate"]:
@@ -79,13 +113,22 @@ if st.button("Evaluate"):
         st.write("Disagreement Level:", cc["disagreement_level"])
         st.write("Override Flag:", cc["override_flag"])
 
+
+        # --------------------------------------------------------------------------------
+        # Confidence (Decision Reliability)
+        # --------------------------------------------------------------------------------
         st.header("Confidence")
 
         st.metric("Confidence Score", data["confidence"]["score"])
         st.write("Level:", data["confidence"]["level"])
+
         if data["confidence"]["level"] == "Low":
             st.warning("Low confidence prediction — review recommended")
 
+
+        # --------------------------------------------------------------------------------
+        # Sensitivity (Boundary Analysis)
+        # --------------------------------------------------------------------------------
         st.header("Decision Sensitivity")
 
         sens = data["sensitivity"]
@@ -94,6 +137,10 @@ if st.button("Evaluate"):
         st.write("Closest Threshold:", sens["closest_threshold"])
         st.write("Flip Risk:", sens["flip_risk"])
 
+
+        # --------------------------------------------------------------------------------
+        # Tension (Conflict Measurement)
+        # --------------------------------------------------------------------------------
         st.header("Decision Tension")
 
         tension = data["tension"]
@@ -104,6 +151,10 @@ if st.button("Evaluate"):
         st.write("Signal Conflict:", tension["components"]["signal_conflict"])
         st.write("Model vs Similarity Gap:", tension["components"]["model_vs_similarity_gap"])
 
+
+        # --------------------------------------------------------------------------------
+        # Escalation (Decision Routing)
+        # --------------------------------------------------------------------------------
         st.header("Decision Routing")
 
         escalation = data.get("escalation", "UNKNOWN")
@@ -119,12 +170,17 @@ if st.button("Evaluate"):
         else:
             st.write(escalation)
 
+        # Reinforcing escalation signals
         if data["confidence"]["level"] == "Low":
             st.warning("Low confidence — system recommends review")
 
-        if data.get("escalation") != "AUTO_DECISION":
-            st.warning(f"Escalation Triggered: {data.get('escalation')}")
+        if escalation != "AUTO_DECISION":
+            st.warning(f"Escalation Triggered: {escalation}")
 
+
+        # --------------------------------------------------------------------------------
+        # Agent Output and Explanation
+        # --------------------------------------------------------------------------------
         st.header("AI Explanation")
 
         st.subheader("Summary")
@@ -146,10 +202,10 @@ if st.button("Evaluate"):
         st.subheader("Confidence Explanation")
         st.write(explanation["confidence_explanation"])
 
-
         st.subheader("Final Recommendation")
         st.write(explanation["final_recommendation"])
 
+        # Showing scenario only if present
         if "scenario_analysis" in explanation and explanation["scenario_analysis"]:
             st.subheader("Scenario Analysis")
             st.write(explanation["scenario_analysis"])

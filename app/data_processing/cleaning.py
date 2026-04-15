@@ -1,3 +1,7 @@
+# --------------------------------------------------------------------------------
+# Simple Data cleaning before prreprocessing
+# --------------------------------------------------------------------------------
+
 import pandas as pd
 
 def clean_credit_data(df: pd.DataFrame) -> pd.DataFrame:

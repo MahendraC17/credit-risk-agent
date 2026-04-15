@@ -1,3 +1,7 @@
+# --------------------------------------------------------------------------------
+# Simple loading data to PostgrSQL
+# --------------------------------------------------------------------------------
+
 import pandas as pd
 from sqlalchemy import text
 from app.db.connection import engine

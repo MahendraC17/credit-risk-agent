@@ -1,9 +1,24 @@
+# --------------------------------------------------------------------------------
+# Decision Logic Layer
+# Extracting interpretable signals, aggregating them into adjusted risk,
+# and making final underwriting decisions
+# --------------------------------------------------------------------------------
+
 import math
 import json
 
+
+# --------------------------------------------------------------------------------
+# Loading model driven signal weights
+# --------------------------------------------------------------------------------
 with open("app/config/model_signal_weights.json") as f:
     MODEL_WEIGHTS = json.load(f)
 
+
+# --------------------------------------------------------------------------------
+# Risk thresholds and buffer zones
+# Used for band classification and decision stability handling
+# --------------------------------------------------------------------------------
 RISK_BANDS = {
     "moderate": 0.4,
     "high": 0.65,
@@ -12,6 +27,11 @@ RISK_BANDS = {
 
 BUFFER = 0.03
 
+
+# --------------------------------------------------------------------------------
+# Signal configuration
+# Defining how different signals contribute to final adjustment
+# --------------------------------------------------------------------------------
 SIGNAL_CONFIG = {
     "historical_default": {
         "type": "model",
@@ -27,7 +47,12 @@ SIGNAL_CONFIG = {
     }
 }
 
-def classify_risk_band(score: float) -> str:
+
+# --------------------------------------------------------------------------------
+# Risk Band Classification
+# Mapping probability score into interpretable risk levels
+# --------------------------------------------------------------------------------
+def classify_risk_band(score: float):
     if score >= RISK_BANDS["very_high"]:
         return "Very High"
     elif score >= RISK_BANDS["high"]:
@@ -36,19 +61,31 @@ def classify_risk_band(score: float) -> str:
         return "Moderate"
     else:
         return "Low"
-    
+
+
+# --------------------------------------------------------------------------------
+# Probability - Log-Odds Conversion
+# Using log-odds space to combine signals additively
+# --------------------------------------------------------------------------------
 def prob_to_log_odds(p):
     eps = 1e-6
     p = min(max(p, eps), 1 - eps)
     return math.log(p / (1 - p))
 
+
 def log_odds_to_prob(lo):
     return 1 / (1 + math.exp(-lo))
 
-def extract_signals(context: dict) -> list:
+
+# --------------------------------------------------------------------------------
+# Signal Extraction
+# Converting context into structured signals representing risk drivers
+# --------------------------------------------------------------------------------
+def extract_signals(context: dict):
+
     signals = []
 
-    # BASE MODEL SIGNAL
+    # Base model signal
     signals.append({
         "name": "model_risk",
         "type": "base",
@@ -56,7 +93,7 @@ def extract_signals(context: dict) -> list:
         "direction": "negative"
     })
 
-    # POSITIVE FINANCIAL SIGNAL
+    # Positive signal -low financial burden
     if context.get("is_low_dti"):
         signals.append({
             "name": "low_dti",
@@ -65,7 +102,7 @@ def extract_signals(context: dict) -> list:
             "direction": "positive"
         })
 
-    # FINANCIAL SIGNALS
+    # Negative financial signals
     if context["is_high_dti"]:
         signals.append({
             "name": "high_dti",
@@ -82,7 +119,7 @@ def extract_signals(context: dict) -> list:
             "direction": "negative"
         })
 
-    # BEHAVIORAL / PAST DEAFULT SIGNAL
+    # Behavioral signal -past default
     if context["historical_default"] == "Y":
         signals.append({
             "name": "historical_default",
@@ -90,21 +127,24 @@ def extract_signals(context: dict) -> list:
             "strength": SIGNAL_CONFIG["historical_default"]["weight"],
             "direction": "negative"
         })
-    
+
     return signals
 
 
+# --------------------------------------------------------------------------------
+# Signal Aggregation
+# Combining model output with signals in log-odds space to adjust risk
+# --------------------------------------------------------------------------------
 def aggregate_signals(signals: list) -> dict:
-    base_risk = 0
 
-    for s in signals:
-        if s["type"] == "base":
-            base_risk = s["strength"]
+    # Extracting base model probability
+    base_risk = next((s["strength"] for s in signals if s["type"] == "base"), 0)
 
     base_log_odds = prob_to_log_odds(base_risk)
 
     adjustment = 0
 
+    # Applying additive adjustments based on signal direction
     for s in signals:
         if s["type"] == "base":
             continue
@@ -117,7 +157,6 @@ def aggregate_signals(signals: list) -> dict:
             adjustment -= delta
 
     final_log_odds = base_log_odds + adjustment
-
     final_risk = log_odds_to_prob(final_log_odds)
 
     return {
@@ -127,45 +166,51 @@ def aggregate_signals(signals: list) -> dict:
     }
 
 
-def make_decision(risk_profile: dict, context: dict) -> tuple:
+# --------------------------------------------------------------------------------
+# Decision Engine
+# Translating final risk into actionable underwriting decision
+# using thresholds and stability buffers
+# --------------------------------------------------------------------------------
+def make_decision(risk_profile: dict, context: dict):
+
     score = risk_profile["final_risk"]
 
     high = RISK_BANDS["high"]
     very_high = RISK_BANDS["very_high"]
     moderate = RISK_BANDS["moderate"]
 
-    # EXTREME CASE
+    # Extreme rejection zone
     if score >= 0.88:
         return "Reject", "Extremely high calibrated risk"
 
-    # VERY HIGH (stable region)
+    # Very high risk -stable region
     elif score >= very_high + BUFFER:
         if context["historical_default"] == "Y":
             return "Reject", "Extreme risk with prior default"
         return "Reject or require collateral", "Extreme predicted risk"
 
-    # VERY HIGH BUFFER ZONE
+    # Very high buffer zone -uncertain region
     elif very_high - BUFFER <= score < very_high + BUFFER:
         return "Reject or require collateral", "Borderline extreme risk (stability buffer)"
 
-    # HIGH (stable region)
+    # High risk -stable region
     elif score >= high + BUFFER:
         if context["is_high_dti"] or context["historical_default"] == "Y":
             return "Reject or require collateral", "Strong negative signals"
         return "Approve with strict conditions", "High risk but controlled"
 
-    # HIGH BUFFER ZONE
+    # High buffer zone
     elif high - BUFFER <= score < high + BUFFER:
         return "Approve with strict conditions", "Borderline high risk (stability buffer)"
 
-    # MODERATE (stable region)
+    # Moderate risk -stable
     elif score >= moderate + BUFFER:
         return "Approve with conditions", "Moderate risk"
 
-    # MODERATE BUFFER ZONE
+    # Moderate buffer zone
     elif moderate - BUFFER <= score < moderate + BUFFER:
         return "Approve with conditions", "Borderline moderate risk (stability buffer)"
 
-    # LOW
+    # Low risk
     else:
         return "Approve", "Low risk"
