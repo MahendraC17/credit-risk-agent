@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 from app.db.connection import engine
+from app.config.config_loader import CONFIG
 
 
 # --------------------------------------------------------------------------------
@@ -71,7 +72,8 @@ def find_similar(applicant_data: dict):
 
     # Applying inverse distance weighting
     # That is closer neighbors contribute more
-    weights = 1 / (d + 0.1)
+    smooth = CONFIG["similarity"]["distance_smoothing"]
+    weights = 1 / (d + smooth)
 
     neighbor_defaults = y_ref.iloc[indices[0]].values
 
@@ -87,14 +89,17 @@ def find_similar(applicant_data: dict):
     weighted_std = np.sqrt(weighted_var)
 
     # Preventing unrealistically low variance
-    if weighted_std < 0.01:
-        weighted_std = 0.01
+    min_std = CONFIG["similarity"]["min_std"]
+
+    if weighted_std < min_std:
+        weighted_std = min_std
 
     n_eff = (w_sum ** 2) / w_sq_sum
 
     # Computing confidence band around estimate
     confidence_band = 1.96 * (weighted_std / np.sqrt(n_eff))
-    confidence_band = max(confidence_band, 0.02)
+    min_band = CONFIG["similarity"]["min_confidence_band"]
+    confidence_band = max(confidence_band, min_band)
 
     return {
         "mean": round(float(weighted_mean), 4),

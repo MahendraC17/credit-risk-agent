@@ -5,7 +5,9 @@
 # --------------------------------------------------------------------------------
 
 def build_context(applicant, risk_score, risk_level, drivers):
-
+    from app.config.config_loader import CONFIG
+    dti_cfg = CONFIG["dti"]
+    
     # Extracting key financial inputs with safe defaults
     income = applicant.get("income", 0)
     loan_amount = applicant.get("loan_amount", 0)
@@ -24,10 +26,11 @@ def build_context(applicant, risk_score, risk_level, drivers):
         "dti": dti,
 
         # Deriving simple rule-based flags for decision logic
-        # These act as interpretable features for signal generation
-        "is_high_dti": dti > 0.5,
-        "is_moderate_dti": 0.4 < dti <= 0.5,
-        "is_low_dti": dti < 0.25,
+        # These act as interpretable features for signal generatio
+
+        "is_high_dti": dti > dti_cfg["high"],
+        "is_moderate_dti": dti_cfg["moderate"] < dti <= dti_cfg["high"],
+        "is_low_dti": dti < dti_cfg["low"],
 
         # Behavioral and historical attributes
         "historical_default": applicant.get("historical_default", "N"),

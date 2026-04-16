@@ -9,6 +9,7 @@ from app.models.explain import explain_prediction
 from app.decision.context import build_context
 from app.decision.signals import extract_signals, aggregate_signals, make_decision, classify_risk_band
 from app.models.similarity import find_similar
+from app.config.config_loader import CONFIG
 
 
 # --------------------------------------------------------------------------------
@@ -26,7 +27,7 @@ def compute_confidence(model_risk, similarity, adjustment, final_risk):
     signal_score = 1 - adjustment_penalty
 
     # Measuring how far decision is from thresholds
-    thresholds = [0.4, 0.65, 0.85]
+    thresholds = list(CONFIG["risk"]["thresholds"].values())
     distance_to_boundary = min(abs(final_risk - t) for t in thresholds)
     stability_score = min(distance_to_boundary * 4, 1)
 
@@ -36,11 +37,13 @@ def compute_confidence(model_risk, similarity, adjustment, final_risk):
     similarity_score = 1 - uncertainty_penalty
 
     # Combining all components into final confidence score
+    weights = CONFIG["confidence"]["weights"]
+
     confidence_score = (
-        0.5 * consistency_score +
-        0.15 * signal_score +
-        0.15 * stability_score +
-        0.2 * similarity_score
+        weights["consistency"] * consistency_score +
+        weights["signal"] * signal_score +
+        weights["stability"] * stability_score +
+        weights["similarity"] * similarity_score
     )
 
     confidence_score = max(0, min(confidence_score, 1))
@@ -102,7 +105,7 @@ def simulate_to_threshold(applicant_data: dict, target_risk: float, step: float 
 # --------------------------------------------------------------------------------
 def compute_sensitivity(final_risk: float):
 
-    thresholds = [0.4, 0.65, 0.85]
+    thresholds = list(CONFIG["risk"]["thresholds"].values())
     distances = {t: abs(final_risk - t) for t in thresholds}
 
     closest_threshold = min(distances, key=distances.get)
@@ -276,18 +279,19 @@ def run_scenario_analysis(applicant_data: dict):
 # Determining decision routing based on diagnostics
 # --------------------------------------------------------------------------------
 def compute_escalation(consistency, confidence, sensitivity):
+    esc_cfg = CONFIG["escalation"]
 
     if consistency["override_flag"]:
-        return "REVIEW_REQUIRED"
+        return esc_cfg["override"]
 
     elif confidence["level"] == "Low":
-        return "MANUAL_REVIEW"
+        return esc_cfg["low_confidence"]
 
     elif sensitivity["flip_risk"]:
-        return "BORDERLINE_REVIEW"
+        return esc_cfg["boundary"]
 
     else:
-        return "AUTO_DECISION"
+        return esc_cfg["default"]
     
 
 # --------------------------------------------------------------------------------

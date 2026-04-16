@@ -6,7 +6,7 @@
 
 import math
 import json
-
+from app.config.config_loader import CONFIG
 
 # --------------------------------------------------------------------------------
 # Loading model driven signal weights
@@ -19,13 +19,8 @@ with open("app/config/model_signal_weights.json") as f:
 # Risk thresholds and buffer zones
 # Used for band classification and decision stability handling
 # --------------------------------------------------------------------------------
-RISK_BANDS = {
-    "moderate": 0.4,
-    "high": 0.65,
-    "very_high": 0.85
-}
-
-BUFFER = 0.03
+RISK_BANDS = CONFIG["risk"]["thresholds"]
+BUFFER = CONFIG["risk"]["buffer"]
 
 
 # --------------------------------------------------------------------------------
@@ -39,11 +34,11 @@ SIGNAL_CONFIG = {
     },
     "high_dti": {
         "type": "policy",
-        "weight": 0.15
+        "weight": CONFIG["signals"]["high_dti"]
     },
     "moderate_dti": {
         "type": "policy",
-        "weight": 0.05
+        "weight": CONFIG["signals"]["moderate_dti"]
     }
 }
 
