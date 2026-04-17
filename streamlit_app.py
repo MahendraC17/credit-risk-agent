@@ -4,8 +4,29 @@
 
 import streamlit as st
 import requests
-from app.config.config_loader import CONFIG
 import json
+import re
+from app.config.config_loader import CONFIG
+
+# --------------------------------------------------------------------------------
+# Text cleaning function to return clearner text, solution for when numbers and 
+# text came together caused sentences to return without any space in betweent the words
+# --------------------------------------------------------------------------------
+def clean_text(text: str):
+    if not isinstance(text, str):
+        return text
+    text = text.replace("$", "\\$")
+
+    text = re.sub(r',([^\s])', r', \1', text)
+
+    text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
+
+    text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
+
+    return text.strip()
+
+# def format_currency(text: str):
+#     return re.sub(r'(\b\d{3,}\b)', r'$\1', text)
 
 st.set_page_config(layout="wide")
 
@@ -155,27 +176,37 @@ if run:
     # --------------------------------------------------------------------------------
     st.subheader("AI Analysis", help="Structured reasoning generated from model outputs and system signals")
 
-    st.write(explanation["summary"])
+    st.write(clean_text(explanation["summary"]))
 
     with st.expander("Detailed Analysis using AI"):
         st.markdown("**Risk Factors**")
         for r in explanation["risk_factors"]:
-            st.write("-", r)
+            st.write("-", clean_text(r))
 
         st.markdown("**Financial Analysis**")
-        st.write(explanation["financial_analysis"])
+        # fa = explanation["financial_analysis"]
+        # fa = format_currency(fa)
+        # fa = clean_text(fa)
+
+        # st.write(fa)
+        st.write(clean_text(explanation["financial_analysis"]))
 
         st.markdown("**Behavioral Analysis**")
-        st.write(explanation["behavioral_analysis"])
+        st.write(clean_text(explanation["behavioral_analysis"]))
 
         st.markdown("**Validation Analysis**")
-        st.write(explanation["validation_analysis"])
+        st.write(clean_text(explanation["validation_analysis"]))
 
         st.markdown("**Confidence Explanation**")
-        st.write(explanation["confidence_explanation"])
+        st.write(clean_text(explanation["confidence_explanation"]))
+
+        scenario_text = explanation.get("scenario_analysis")
+        if scenario_text and scenario_text.strip():
+            st.markdown("**Scenario Analysis**")
+            st.write(clean_text(scenario_text))
 
         st.markdown("**Final Recommendation**")
-        st.write(explanation["final_recommendation"])
+        st.write(clean_text(explanation["final_recommendation"]))
 
 
     # --------------------------------------------------------------------------------

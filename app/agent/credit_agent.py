@@ -197,6 +197,8 @@ def run_agent(borrower_id: int):
     If scenarios are provided:
     - Do NOT include improvements in final_recommendation
     - Use scenario_analysis for improvement guidance
+    - Write a short, direct recommendation
+    - Avoid phrases like "a scenario analysis suggests"
 
     If no scenarios are provided:
     - Do NOT suggest improvements
