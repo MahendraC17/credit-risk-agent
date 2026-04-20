@@ -58,6 +58,40 @@ If the system detects low confidence, strong disagreement, or unstable decisions
 
 ---
 
+## Threshold Calibration and Validation
+
+The system does not rely on fixed, arbitrary thresholds. Instead, thresholds are calibrated using the final system output.
+
+### Why calibration was needed
+
+The system modifies model predictions using signals and adjustments.
+
+### What was done
+
+Thresholds were recalibrated using the **final risk score (post-signal adjustment)**, ensuring alignment between:
+
+- model prediction  
+- signal adjustments  
+- decision logic  
+
+### How thresholds are derived
+
+Thresholds are computed from the distribution of final risk scores using percentile-based segmentation:
+
+- Moderate → 60th percentile  
+- High → 80th percentile  
+- Very High → 92nd percentile  
+
+This ensures the system produces meaningful segmentation instead of collapsing into extreme categories.
+
+### Result
+
+The calibrated thresholds create clear separation between risk bands, allowing the system to assign different decision strategies (approve, conditional, reject) in a structured way.
+
+This makes the decision layer consistent with the actual behavior of the system.
+
+---
+
 ## What makes this different
 
 It is a system that:
@@ -95,7 +129,6 @@ There are two ways to interact with it:
 
 This is an evolving system and not everything is fully data-driven yet.
 
-- Some decision thresholds are still fixed instead of learned from data  
 - Signal strengths are partially calibrated but not fully optimized  
 - Similarity logic depends on feature scaling and may not capture all nuances  
 - The system does not yet learn from past decisions or feedback  
