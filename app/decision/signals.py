@@ -93,7 +93,7 @@ def extract_signals(context: dict):
         signals.append({
             "name": "low_dti",
             "type": "financial",
-            "strength": 0.08,
+            "strength": 0.02,
             "direction": "positive"
         })
 
@@ -102,7 +102,7 @@ def extract_signals(context: dict):
         signals.append({
             "name": "high_dti",
             "type": "financial",
-            "strength": 0.20,
+            "strength": 0.08,
             "direction": "negative"
         })
 
@@ -110,7 +110,7 @@ def extract_signals(context: dict):
         signals.append({
             "name": "moderate_dti",
             "type": "financial",
-            "strength": 0.10,
+            "strength": 0.04,
             "direction": "negative"
         })
 
@@ -139,7 +139,6 @@ def aggregate_signals(signals: list) -> dict:
 
     adjustment = 0
 
-    # Applying additive adjustments based on signal direction
     for s in signals:
         if s["type"] == "base":
             continue
@@ -150,6 +149,16 @@ def aggregate_signals(signals: list) -> dict:
             adjustment += delta
         else:
             adjustment -= delta
+
+    # ----------------------------------------------------
+    # Cap adjustment to prevent signal dominance
+    # ----------------------------------------------------
+    MAX_ADJUSTMENT = 0.2   # key control knob
+
+    if adjustment > MAX_ADJUSTMENT:
+        adjustment = MAX_ADJUSTMENT
+    elif adjustment < -MAX_ADJUSTMENT:
+        adjustment = -MAX_ADJUSTMENT
 
     final_log_odds = base_log_odds + adjustment
     final_risk = log_odds_to_prob(final_log_odds)

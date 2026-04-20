@@ -1,43 +1,38 @@
 {
-  "risk": {
-    "thresholds": {
-      "moderate": 0.4,
-      "high": 0.65,
-      "very_high": 0.85
+    "risk": {
+        "thresholds": {
+            "moderate": 0.12,
+            "high": 0.42,
+            "very_high": 0.86
+        },
+        "buffer": 0.03
     },
-    "buffer": 0.03
-  },
-
-  "dti": {
-    "high": 0.5,
-    "moderate": 0.4,
-    "low": 0.25
-  },
-
-  "confidence": {
-    "weights": {
-      "consistency": 0.5,
-      "signal": 0.15,
-      "stability": 0.15,
-      "similarity": 0.2
+    "dti": {
+        "high": 0.5,
+        "moderate": 0.4,
+        "low": 0.25
+    },
+    "confidence": {
+        "weights": {
+            "consistency": 0.5,
+            "signal": 0.15,
+            "stability": 0.15,
+            "similarity": 0.2
+        }
+    },
+    "similarity": {
+        "distance_smoothing": 0.1,
+        "min_std": 0.01,
+        "min_confidence_band": 0.02
+    },
+    "escalation": {
+        "override": "REVIEW_REQUIRED",
+        "low_confidence": "MANUAL_REVIEW",
+        "boundary": "BORDERLINE_REVIEW",
+        "default": "AUTO_DECISION"
+    },
+    "signals": {
+        "high_dti": 0.15,
+        "moderate_dti": 0.05
     }
-  },
-
-  "similarity": {
-    "distance_smoothing": 0.1,
-    "min_std": 0.01,
-    "min_confidence_band": 0.02
-  },
-
-  "escalation": {
-    "override": "REVIEW_REQUIRED",
-    "low_confidence": "MANUAL_REVIEW",
-    "boundary": "BORDERLINE_REVIEW",
-    "default": "AUTO_DECISION"
-  },
-
-  "signals": {
-  "high_dti": 0.15,
-  "moderate_dti": 0.05
-  }
 }
