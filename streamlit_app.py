@@ -6,6 +6,8 @@ import streamlit as st
 import requests
 import json
 import re
+from app.db.queries import fetch_applicant
+from app.agent.credit_agent import run_agent
 from app.config.config_loader import CONFIG
 
 # --------------------------------------------------------------------------------
@@ -187,15 +189,26 @@ with st.sidebar:
 # --------------------------------------------------------------------------------
 if run:
 
-    response = requests.post(f"http://localhost:8000/analyze/{borrower_id}")
+    # FASTApi response local testing  
+    # response = requests.post(f"http://localhost:8000/analyze/{borrower_id}")
 
-    if response.status_code != 200:
-        st.error("Applicant not found from stream")
+    # if response.status_code != 200:
+    #     st.error("Applicant not found from stream")
+    #     st.stop()
+
+    # api_response = response.json()
+    # data = api_response["structured_output"]
+    # explanation = api_response["agent_explanation"]
+
+    try:
+        result = run_agent(borrower_id)
+
+        data = result["structured_output"]
+        explanation = result["agent_explanation"]
+
+    except Exception as e:
+        st.error(f"Error: {str(e)}")
         st.stop()
-
-    api_response = response.json()
-    data = api_response["structured_output"]
-    explanation = api_response["agent_explanation"]
 
     main_col, dev_col = st.columns([3, 1])
 
