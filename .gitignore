@@ -8,8 +8,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-data/raw/
-
 .vscode/
 .idea/
 .DS_Store
