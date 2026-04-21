@@ -1,10 +1,24 @@
 # Credit Decision System with Validation and Uncertainty Awareness
 
-Credit models predict risk. What they don't do is tell you when that prediction is wrong, unstable, or shouldn't be acted on automatically.
+Credit models predict risk, but they do not indicate whether that prediction is reliable, stable, or aligned with real-world outcomes.
 This system wraps the model in a decision layer that validates predictions against historical patterns, checks how stable the outcome is, and measures its own confidence. When confidence is low or signals conflict, it escalates to a human rather than forcing a call.
 An agentic AI layer handles the cases that need deeper reasoning, surfacing what's driving the decision, flagging disagreements, and suggesting next steps instead of just returning a number or a flag.
 
 ---
+
+## Live Application
+
+You can interact with the application  on: https://credit-risk-agent.streamlit.app/
+
+Use any valid borrower/applicant ID from 1 to 32,581 to test the application end-to-end:
+
+- risk prediction  
+- decision logic  
+- confidence scoring  
+- similarity validation  
+- AI generated explanation  
+
+The application runs the full pipeline on a cloud-hosted database and reflects the exact system described below.
 
 ## Problem
 
@@ -86,6 +100,30 @@ This makes the decision layer consistent with the actual behavior of the system.
 
 ---
 
+## System Architecture
+
+The system operates as a layered pipeline:
+
+`User Input (Streamlit UI)`
+        ->
+`Data Fetch (Supabase PostgreSQL)`
+        ->
+`Model Prediction`
+        ->
+`Signal Adjustment Layer`
+        ->
+`Similarity Validation`
+        ->
+`Confidence & Stability Assessment`
+        ->
+`Decision + Escalation Logic`
+        ->
+`Agent Explanation (LLM)`
+
+Each layer contributes independently, making the system modular and interpretable.
+
+---
+
 ## What makes this different
 
 It is a system that:
@@ -110,12 +148,19 @@ The system behaves differently depending on the situation:
 
 ## How it is used
 
-The system is exposed through an API and visualized through a simple interface.
+The system is deployed as an interactive application:
 
-There are two ways to interact with it:
+- Users enter a borrower ID  
+- The system retrieves data from a cloud-hosted database on supabase 
+- The full pipeline is executed in real time  
+- Results are displayed with structured outputs and explanations  
 
-- **Direct evaluation**: returns the structured decision and diagnostics  
-- **Agent-based analysis**: adds a clear explanation and suggests next steps when needed  
+Two modes of output are available:
+
+- **Structured decision output**: risk score, decision, confidence, and diagnostics  
+- **Agent-based analysis**: a natural language explanation of the decision, including reasoning and validation insights  
+
+This allows users or representatives to both inspect the system behavior and understand the reasoning behind each decision.
 
 ---
 
@@ -123,8 +168,7 @@ There are two ways to interact with it:
 
 This is an evolving system and not everything is fully data-driven yet.
 
-- Signal strengths are partially calibrated but not fully optimized  
-- Similarity logic depends on feature scaling and may not capture all nuances  
+- Similarity computation currently scans the full dataset and may not scale efficiently to very large datasets   
 - The system does not yet learn from past decisions or feedback  
 
 ---
@@ -138,7 +182,6 @@ Future improvements will focus on making the system more robust and data-driven:
 - Improving similarity weighting and feature importance  
 - Adding tracking and feedback loops for decisions  
 - Strengthening consistency between model behavior and decision logic 
-- Hosting this as an application on streamlit
 
 ---
 
@@ -163,25 +206,11 @@ That shift is what makes the system useful in practice.
 
 - Python 3.10+  
 - FastAPI (API layer)  
-- Streamlit (UI layer)  
+- Streamlit (UI layer)
+- Supabase (hosted PostgreSQL database)
 - LightGBM (model training)  
 - SHAP (model explainability)  
 - Scikit-learn (preprocessing, calibration, similarity) 
 - LangChain + OpenAI (agent explanation layer)  
 
 ---
-
-### Environment
-
-- Python version: 3.10 or higher recommended  
-- A virtual environment is recommended for dependency isolation  
-
----
-
-### Installation
-
-Install dependencies using:
-
-```bash
-pip install -r requirements.txt
-```
