@@ -1,14 +1,8 @@
 # Credit Decision System with Validation and Uncertainty Awareness
 
-This project started from a simple observation.
-
-Most machine learning models can predict a risk score, but they do not tell you when that prediction should not be trusted.
-
-In credit decisions, this is a real problem. A model might say someone is high risk, but similar people in the past may have behaved very differently. Or a decision might be sitting right on the edge, where a small change could completely flip the outcome. In such cases, blindly trusting a model can lead to poor decisions.
-
-This project is built to address that gap.
-
-Instead of treating prediction as the final answer, the system treats it as just one part of a larger decision process.
+Credit models predict risk. What they don't do is tell you when that prediction is wrong, unstable, or shouldn't be acted on automatically.
+This system wraps the model in a decision layer that validates predictions against historical patterns, checks how stable the outcome is, and measures its own confidence. When confidence is low or signals conflict, it escalates to a human rather than forcing a call.
+An agentic AI layer handles the cases that need deeper reasoning, surfacing what's driving the decision, flagging disagreements, and suggesting next steps instead of just returning a number or a flag.
 
 ---
 
