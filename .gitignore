@@ -8,8 +8,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-app/models/*.pkl
-
 data/raw/
 
 .vscode/
