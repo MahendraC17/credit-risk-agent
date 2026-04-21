@@ -76,7 +76,7 @@ The system modifies model predictions using signals and adjustments.
 
 ### What was done
 
-Thresholds were recalibrated using the **final risk score (post-signal adjustment)**, ensuring alignment between:
+Thresholds were recalibrated using the **final risk score (post-signal adjustment)**, backed by data driven ensuring alignment between:
 
 - model prediction  
 - signal adjustments  
@@ -124,17 +124,6 @@ Each layer contributes independently, making the system modular and interpretabl
 
 ---
 
-## What makes this different
-
-It is a system that:
-
-- separates prediction from decision-making  
-- checks its own outputs against historical patterns  
-- measures how stable and reliable a decision is  
-- knows when to step back and ask for human review  
-
----
-
 ## Example behavior
 
 The system behaves differently depending on the situation:
@@ -166,8 +155,6 @@ This allows users or representatives to both inspect the system behavior and und
 
 ## Current limitations
 
-This is an evolving system and not everything is fully data-driven yet.
-
 - Similarity computation currently scans the full dataset and may not scale efficiently to very large datasets   
 - The system does not yet learn from past decisions or feedback  
 
@@ -177,7 +164,6 @@ This is an evolving system and not everything is fully data-driven yet.
 
 Future improvements will focus on making the system more robust and data-driven:
 
-- Learning decision thresholds directly from data  
 - Expanding signal calibration beyond a few features  
 - Improving similarity weighting and feature importance  
 - Adding tracking and feedback loops for decisions  
@@ -187,16 +173,7 @@ Future improvements will focus on making the system more robust and data-driven:
 
 ## Summary
 
-This project is about moving from a model that predicts risk to a system that supports decisions.
-
-It not only answers “what is the risk”, but also:
-
-- can we trust this result  
-- does it match real-world patterns  
-- how stable is this decision  
-- should a human take a closer look  
-
-That shift is what makes the system useful in practice.
+This project is about moving from a model that predicts risk to a system that supports decisions with supoort of generated decisions.
 
 ---
 
