@@ -23,7 +23,8 @@
     "similarity": {
         "distance_smoothing": 0.1,
         "min_std": 0.01,
-        "min_confidence_band": 0.02
+        "min_confidence_band": 0.02,
+         "k": 75
     },
     "escalation": {
         "override": "REVIEW_REQUIRED",
@@ -35,4 +36,5 @@
         "high_dti": 0.15,
         "moderate_dti": 0.05
     }
+
 }

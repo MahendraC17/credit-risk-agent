@@ -65,21 +65,121 @@ with st.sidebar:
     with st.expander("Developer Panel"):
 
         st.markdown("### Risk Thresholds")
-        st.json(CONFIG["risk"]["thresholds"])
+
+        thresholds = CONFIG["risk"]["thresholds"]
+
+        st.write(
+            f"""
+        These thresholds define how the final risk score is translated into decision categories.
+
+        - **Moderate Risk ≥ {thresholds['moderate']:.2f}**  
+        Borrowers start showing elevated risk. Decisions may include conditions or additional checks.
+
+        - **High Risk ≥ {thresholds['high']:.2f}**  
+        Borrowers are significantly risky. Decisions become stricter, often requiring collateral or strong justification.
+
+        - **Very High Risk ≥ {thresholds['very_high']:.2f}**  
+        Borrowers are highly likely to default. These cases are typically rejected unless overridden.
+
+        The thresholds are calibrated from system output to ensure each band reflects real-world default behavior.
+        """
+        )
+
+        st.markdown("---")
 
         st.markdown("### Buffer")
-        st.write(CONFIG["risk"]["buffer"])
+
+        st.write(
+            f"""
+        **Buffer: ±{CONFIG["risk"]["buffer"]:.2f}**
+
+        Defines a margin around thresholds where decisions are treated as unstable.
+
+        If a score falls within this range:
+        - the decision is considered sensitive  
+        - small changes could flip the outcome  
+        - the system may apply stricter rules or escalate the case  
+        """
+        )
+
+        st.markdown("---")
 
         st.markdown("### DTI Thresholds")
-        st.json(CONFIG["dti"])
 
-        st.markdown("### Confidence Weights")
-        st.json(CONFIG["confidence"]["weights"])
+        dti = CONFIG["dti"]
 
-        st.markdown("### Similarity Settings")
-        st.json(CONFIG["similarity"])
+        st.write(
+        f"""
+        Debt-to-Income (DTI) thresholds used to trigger risk signals:
 
-        st.info("These parameters control how strict or lenient the system behaves.")
+        - **Low DTI ≤ {dti['low']}** → considered financially manageable  
+        - **Moderate DTI ≥ {dti['moderate']}** → triggers moderate risk signal  
+        - **High DTI ≥ {dti['high']}** → triggers strong risk signal  
+
+        These do not directly decide outcomes, but influence the final risk through signals.
+        """
+        )
+
+        st.markdown("---")
+
+        
+        st.markdown("### Confidence Scoring")
+
+        weights = CONFIG["confidence"]["weights"]
+
+        st.write(
+            f"""
+        Confidence reflects how reliable a decision is based on multiple factors.
+
+        - **Signal Strength (weight {weights.get('signal', 'N/A')})**  
+            Measures how strongly risk signals indicate risk.
+
+        - **Similarity Alignment (weight {weights.get('similarity', 'N/A')})**  
+            Evaluates how similar historical borrowers behaved compared to the model prediction.
+
+        - **Decision Stability (weight {weights.get('stability', 'N/A')})**  
+            Captures how close the score is to a threshold. Closer scores are less stable.
+
+        - **Signal Consistency (weight {weights.get('consistency', 'N/A')})**  
+            Checks whether different signals agree with each other. Conflicting signals reduce confidence.
+
+
+        Lower confidence means:
+        - higher uncertainty  
+        - higher chance of escalation  
+        - less trust in automated decisions  
+        """
+        )
+
+        st.markdown("---")
+
+
+        st.markdown("### Similarity Validation")
+
+        similarity = CONFIG["similarity"]
+
+        st.write(
+            f"""
+        The system compares each applicant to similar historical cases.
+
+        - **Top K neighbors: {similarity.get('k', 'N/A')}**
+        - **Distance smoothing: {similarity.get('distance_smoothing', 'N/A')}**
+        - **Minimum confidence band: {similarity.get('min_confidence_band', 'N/A')}**
+
+        This acts as a second opinion:
+        - validates model predictions  
+        - detects unusual or conflicting cases  
+        - improves trust in decisions  
+
+        If model and similar cases disagree, confidence is reduced and the case may be escalated.
+        """
+        )
+
+        st.markdown("---")
+
+        st.info(
+            "These parameters define how the system balances prediction, validation, and decision-making."
+        )
 
 
 # --------------------------------------------------------------------------------
