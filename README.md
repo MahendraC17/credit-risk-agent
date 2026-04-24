@@ -153,6 +153,14 @@ This allows users or representatives to both inspect the system behavior and und
 
 ---
 
+## System Architecture
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MahendraC17/assets/main/system_architecture.jpg" width="750"/>
+</p>
+
+---
+
 ## Current limitations
 
 - Similarity computation currently scans the full dataset and may not scale efficiently to very large datasets   
@@ -182,12 +190,21 @@ This project is about moving from a model that predicts risk to a system that su
 ### Tech Stack
 
 - Python 3.10+  
-- FastAPI (API layer)  
+- FastAPI (API layer for testing)  
 - Streamlit (UI layer)
 - Supabase (hosted PostgreSQL database)
 - LightGBM (model training)  
 - SHAP (model explainability)  
 - Scikit-learn (preprocessing, calibration, similarity) 
-- LangChain + OpenAI (agent explanation layer)  
+- LangChain + OpenAI (agent explanation layer)
+- For dependencies see requirements.txt
+
+---
+
+## Decision Pipeline
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/MahendraC17/assets/main/decision_pipeline.jpg" width="900"/>
+</p>
 
 ---
