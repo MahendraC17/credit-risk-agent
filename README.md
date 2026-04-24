@@ -100,30 +100,6 @@ This makes the decision layer consistent with the actual behavior of the system.
 
 ---
 
-## System Architecture
-
-The system operates as a layered pipeline:
-
-`User Input (Streamlit UI)`
-        ->
-`Data Fetch (Supabase PostgreSQL)`
-        ->
-`Model Prediction`
-        ->
-`Signal Adjustment Layer`
-        ->
-`Similarity Validation`
-        ->
-`Confidence & Stability Assessment`
-        ->
-`Decision + Escalation Logic`
-        ->
-`Agent Explanation (LLM)`
-
-Each layer contributes independently, making the system modular and interpretable.
-
----
-
 ## Example behavior
 
 The system behaves differently depending on the situation:
